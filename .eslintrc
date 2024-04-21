@@ -12,7 +12,8 @@
   "env": {
     "browser": true,
     "node": true,
-    "mocha": true
+    "mocha": true,
+    "webextensions": true
   },
   "rules": {
     "@typescript-eslint/no-var-requires": 0
