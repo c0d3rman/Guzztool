@@ -10,6 +10,7 @@
     {
       "matches": [
         "*://play.pokemonshowdown.com/*",
+        "*://replay.pokemonshowdown.com/*",
         "*://*.psim.us/*"
       ],
       "js": [
@@ -24,6 +25,7 @@
       ],
       "matches": [
         "*://play.pokemonshowdown.com/*",
+        "*://replay.pokemonshowdown.com/*",
         "*://*.psim.us/*"
       ]
     }
@@ -34,6 +36,7 @@
   "externally_connectable": {
     "matches": [
       "*://play.pokemonshowdown.com/*",
+      "*://replay.pokemonshowdown.com/*",
       "*://*.psim.us/*"
     ]
   },

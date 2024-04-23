@@ -5,6 +5,7 @@ const subtool = {
     name: "Togepi's Lucky Button",
     description: `Adds an "I'm feeling lucky" button to the teambuilder that generates random sets from usage data.`,
     init: function (guzztool) {
+        if (!guzztool.roomListener) return;
         guzztool.roomListener.on("new", (roomId, room) => {
             if (roomId == "teambuilder") {
                 // Wrapping updateTeamView allows us to add elements to the team view that will always appear even when it's changed.
