@@ -42,7 +42,7 @@
     "offscreen"
   ],
   "options_ui": {
-    "page": "static/options.html",
+    "page": "options/options.html",
     "open_in_tab": true
   },
   "icons": {

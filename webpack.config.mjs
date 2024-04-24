@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import webpack from 'webpack';
 import CopyPlugin from 'copy-webpack-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
+import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
 
@@ -28,45 +29,65 @@ export const buildTargets = [
 // This function returns a webpack config for a given build target.
 // Packaging it this way allows us to build for multiple environments at once.
 const exportForTarget = BUILD_TARGET => {
-    const entryFiles = glob.sync('./src/**/*.target.js').map(file => `./${file}`); // Webpack wants all the paths to start with './'
-    const entry = entryPlus([{
-        entryFiles,
-        outputName: item => item.replace(/\.target\.js$/i, '.js').replace(/^\.\/src\//, './'),
-    }]);
+    // Get all JS & CSS files to build
+    const entry = entryPlus([
+        { // JS - we build any file ending in .target.js
+            entryFiles: glob.sync('./src/**/*.target.js').map(file => `./${file}`), // Webpack wants all the paths to start with './'
+            outputName: item => item.replace(/\.target\.js$/i, '').replace(/^\.\/src\//, './'), // ./src/foo/bar.target.js => ./foo/bar (webpack will append the extension)
+        },
+        { // CSS - we build .sass and .scss files
+            entryFiles: glob.sync('./src/**/*.s[ac]ss').map(file => `./${file}`),
+            // webpack always expects to build a JS file, even if it's empty (since we're building CSS),
+            // so we create this and webpack-remove-empty-scripts deletes it
+            outputName: 'STYLES_DUMMY_DELETE_ME',
+        },
+    ]);
 
     const output = {
         path: path.resolve(__dirname, __DEV__ ? 'dist-dev' : 'dist') + "/" + BUILD_TARGET,
-        filename: '[name]',
-        clean: true,
+        clean: true, // clears out the build folder before building
     };
 
     const moduleRules = [
-        {
+        { // build source maps for JS files
             test: /\.js$/i,
             enforce: "pre",
             use: ["source-map-loader"],
             exclude: /node_modules/,
         },
+        { // build CSS files
+            test: /\.s[ac]ss$/i,
+            use: [
+                {
+                    loader: 'file-loader',
+                    options: {
+                        name: '[name].css',
+                        outputPath: (name, resourcePath) => path.join(path.relative('src', path.dirname(resourcePath)), name),
+                    }
+                },
+                "sass-loader"
+            ],
+        }
     ];
 
     const resolve = {
-        alias: { '@guzztool': path.join(__dirname, 'src') },
-        extensions: ['.js'],
+        alias: { '@guzztool': path.join(__dirname, 'src') }, // You can use @guzztool as a root path in imports
+        extensions: ['.js'], // If you don't give an extension in an import, webpack will look for a .js file
     };
 
 
-    const staticFileFilter = filepath => !(
-        (filepath.endsWith('.js') && !/\blib\b/.test(filepath)) ||
-        (entryFiles.some(e => path.relative(e, filepath) == ''))
+    const isStaticFile = filepath => !(
+        filepath == 'src/manifest.json' || // The manifest is not static
+        (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath)) || // JS files are not static unless they're in a lib/ folder
+        Object.values(entry).flat().some(e => path.relative(e, filepath) == '') // Any file which is an entry point is not static (since it gets built)
     );
     const copyPatterns = [
         // Copy all static files
         {
             from: 'src',
             to: '.',
-            filter: filepath => staticFileFilter(filepath) && filepath != 'src/manifest.json',
+            filter: isStaticFile,
         },
-
         // Autofill manifest.json based on the target browser
         {
             from: 'src/manifest.json',
@@ -90,11 +111,12 @@ const exportForTarget = BUILD_TARGET => {
                 delete parsed.MATCHES;
 
                 // All static files are web-accessible
-                let web_accessible_resources = glob.sync('**/*', { cwd: path.resolve(__dirname, 'src'), nodir: true }).filter(staticFileFilter);
+                let web_accessible_resources = glob.sync('**/*', { cwd: path.resolve(__dirname, 'src'), nodir: true })
+                    .filter(f => isStaticFile(path.join('src', f))); // isStaticFile expects 'src' in the path but the output shouldn't have it, so we do this
                 // As are all source map files
                 web_accessible_resources = web_accessible_resources.concat(glob.sync('**/*.js.map', { cwd: path.resolve(__dirname, 'src') }));
                 // And also all target js files
-                web_accessible_resources = web_accessible_resources.concat(Object.keys(entry).map(file => file.replace(/^\.\//, '')));
+                web_accessible_resources = web_accessible_resources.concat(Object.keys(entry).filter(file => file.endsWith(".js")).map(file => file.replace(/^\.\//, '')));
                 // Now autofill the web_accessible_resources into the manifest
                 for (const subentry of parsed.web_accessible_resources) {
                     subentry.resources = subentry.resources.flatMap(resource => resource == "<WEB ACCESSIBLE RESOURCES>" ? web_accessible_resources : resource);
@@ -154,6 +176,7 @@ const exportForTarget = BUILD_TARGET => {
     const plugins = [
         new webpack.DefinePlugin(webpackEnv),
         new CopyPlugin({ patterns: copyPatterns }),
+        new RemoveEmptyScriptsPlugin(),
     ];
 
 
