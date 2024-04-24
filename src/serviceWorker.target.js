@@ -1,5 +1,5 @@
 import { browser } from './util/util.js';
-import { initializeStorageWithDefaults } from './storage.ts';
+import { initializeStorageWithDefaults } from './util/storage.js';
 
 
 // Create an offscreen document - an invisible page that gives us access to a DOMParser.
@@ -29,7 +29,6 @@ const handleMessage = async (request, sender, sendResponse) => {
             case 'json':
                 result = await response.json();
                 break;
-            // eslint-disable-next-line no-fallthrough
             case 'text':
             default:
                 result = await response.text();

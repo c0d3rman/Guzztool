@@ -2,24 +2,19 @@
 
 
 import { RoomListener } from './util/RoomListener.js';
-import zoruas_spoilerguard from './subtools/zoruas_spoilerguard/main.js';
-import togepis_lucky_button from './subtools/togepis_lucky_button/main.js';
-import meowths_TTS from './subtools/meowths_TTS/main.js';
 
-// Declare all subtools. Add new ones here
-const subtools = [
-    zoruas_spoilerguard,
-    togepis_lucky_button,
-    meowths_TTS
-];
+// Dynamically import all subtools
+const subtoolsContext = require.context('./subtools', true, /\.\/[^/]+\/main\.js$/);
+const subtools = subtoolsContext.keys().map(subtool => subtoolsContext(subtool).default);
 
-// Build up guzztool object with things for subtools to use
+
+// Build up a guzztool object with things for subtools to use
 const guzztool = {};
 guzztool.log = (...args) => {
     console.log(`GUZZTOOL | ${guzztool._currentSubtool.name} |`, ...args);
 }
 if (typeof app !== 'undefined') { // Won't exist on the replay page
-    guzztool.roomListener = new RoomListener(app); // eslint-disable-line no-undef
+    guzztool.roomListener = new RoomListener(app);
 }
 
 // Call all subtools

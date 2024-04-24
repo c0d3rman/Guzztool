@@ -35,7 +35,6 @@ export class ListenerProxy {
             };
             return handlers;
         }, {});
-        // eslint-disable-next-line no-undef
         this.proxy = new Proxy(target, this.handler);
         this.events = {};
     }

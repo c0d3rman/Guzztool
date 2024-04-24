@@ -284,5 +284,3 @@ export function generateRandomSet(species, monData) {
 //     return { data: output };
 //   };
 // };
-
-// /* eslint-enable @typescript-eslint/indent */

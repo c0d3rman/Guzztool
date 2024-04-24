@@ -6,7 +6,6 @@ const subtool = {
 		const domainParts = window.location.hostname.split('.');
 		if (!(domainParts.length > 2 && domainParts[domainParts.length - 3] === "replay")) return;
 
-		/* eslint-disable no-undef */
 		const pokemonNameOriginal = battle.scene.log.battleParser.pokemonName;
 		const pokemonNameModified = (...args) => {
 			const [baseName] = args;
@@ -19,11 +18,9 @@ const subtool = {
 			}
 			return pokemonNameOriginal.apply(battle.scene.log.battleParser, args);
 		}
-		/* eslint-enable no-undef */
 
 		// When a new message is logged in the battle log, speak it.
 		// parseArgs is called for turns and for general battle log messages, which is what we want to read out
-		/* eslint-disable no-undef */
 		const battleParser = battle.scene.log.battleParser;
 		const parseArgs = battleParser.parseArgs;
 		battleParser.parseArgs = (...args) => {
@@ -42,7 +39,6 @@ const subtool = {
 			battleParser.pokemonName = pokemonNameOriginal;
 			return parseArgs.apply(battleParser, args);
 		};
-		/* eslint-enable no-undef */
 	}
 }
 

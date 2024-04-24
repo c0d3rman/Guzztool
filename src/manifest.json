@@ -1,0 +1,59 @@
+{
+  "name": "Guzztool",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "serviceWorker.js"
+  },
+  "MATCHES": [
+    "*://play.pokemonshowdown.com/*",
+    "*://replay.pokemonshowdown.com/*",
+    "*://*.psim.us/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<MATCHES>"
+      ],
+      "js": [
+        "contentScript.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<MATCHES>"
+      ],
+      "resources": [
+        "<WEB ACCESSIBLE RESOURCES>"
+      ]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "<MATCHES>"
+    ]
+  },
+  "host_permissions": [
+    "*://*.smogon.com/"
+  ],
+  "permissions": [
+    "storage",
+    "offscreen"
+  ],
+  "options_ui": {
+    "page": "static/options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "static/icons/16x.png",
+    "32": "static/icons/32x.png",
+    "48": "static/icons/48x.png",
+    "128": "static/icons/128x.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "guzztool@guzztool.com"
+    }
+  }
+}
