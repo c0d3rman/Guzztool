@@ -5,11 +5,13 @@ including collecting multiple JS files into one and filling in manifest.json.
 */
 
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import webpack from 'webpack';
 import CopyPlugin from 'copy-webpack-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
+import HandlebarsPlugin from 'handlebars-webpack-plugin';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
 
@@ -65,9 +67,9 @@ const exportForTarget = BUILD_TARGET => {
                         outputPath: (name, resourcePath) => path.join(path.relative('src', path.dirname(resourcePath)), name),
                     }
                 },
-                "sass-loader"
+                "sass-loader",
             ],
-        }
+        },
     ];
 
     const resolve = {
@@ -79,6 +81,7 @@ const exportForTarget = BUILD_TARGET => {
     const isStaticFile = filepath => !(
         filepath == 'src/manifest.json' || // The manifest is not static
         (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath)) || // JS files are not static unless they're in a lib/ folder
+        filepath.endsWith('.hbs') || // Handlebars templates are not static
         Object.values(entry).flat().some(e => path.relative(e, filepath) == '') // Any file which is an entry point is not static (since it gets built)
     );
     const copyPatterns = [
@@ -114,9 +117,12 @@ const exportForTarget = BUILD_TARGET => {
                 let web_accessible_resources = glob.sync('**/*', { cwd: path.resolve(__dirname, 'src'), nodir: true })
                     .filter(f => isStaticFile(path.join('src', f))); // isStaticFile expects 'src' in the path but the output shouldn't have it, so we do this
                 // As are all source map files
-                web_accessible_resources = web_accessible_resources.concat(glob.sync('**/*.js.map', { cwd: path.resolve(__dirname, 'src') }));
+                web_accessible_resources = web_accessible_resources.concat(glob.sync('**/*.js.map', { cwd: path.resolve(__dirname, output.path) }));
                 // And also all target js files
-                web_accessible_resources = web_accessible_resources.concat(Object.keys(entry).filter(file => file.endsWith(".js")).map(file => file.replace(/^\.\//, '')));
+                web_accessible_resources = web_accessible_resources.concat(Object.entries(entry)
+                    .map(([k, v]) => typeof v == 'string' ? [[k, v]] : v.map(v2 => [k, v2])).flat()
+                    .filter(([k, v]) => v.endsWith(".target.js"))
+                    .map(([k, v]) => k.replace(/^\.\//, '') + ".js"));
                 // Now autofill the web_accessible_resources into the manifest
                 for (const subentry of parsed.web_accessible_resources) {
                     subentry.resources = subentry.resources.flatMap(resource => resource == "<WEB ACCESSIBLE RESOURCES>" ? web_accessible_resources : resource);
@@ -158,11 +164,6 @@ const exportForTarget = BUILD_TARGET => {
         },
     ];
 
-    // These variables will be set in the extension scope
-    const webpackEnv = {
-        "GUZZTOOL.BUILD_TARGET": BUILD_TARGET,
-    }
-
     const optimization = __DEV__ ? {} : {
         minimize: true,
         minimizer: [new TerserPlugin({
@@ -173,10 +174,55 @@ const exportForTarget = BUILD_TARGET => {
         })],
     };
 
+    // Adapted from https://stackoverflow.com/a/41491220/2674563
+    function pickTextColorBasedOnBgColor(bgColor) {
+        const [lightColor, darkColor] = ['#FFFFFF', '#000000'];
+        var color = (bgColor.charAt(0) === '#') ? bgColor.substring(1, 7) : bgColor;
+        var r = parseInt(color.substring(0, 2), 16); // hexToR
+        var g = parseInt(color.substring(2, 4), 16); // hexToG
+        var b = parseInt(color.substring(4, 6), 16); // hexToB
+        var uicolors = [r / 255, g / 255, b / 255];
+        var c = uicolors.map((col) => {
+            if (col <= 0.03928) {
+                return col / 12.92;
+            }
+            return Math.pow((col + 0.055) / 1.055, 2.4);
+        });
+        var L = (0.2126 * c[0]) + (0.7152 * c[1]) + (0.0722 * c[2]);
+        return (L > 0.179) ? darkColor : lightColor;
+    }
+
+    const handlebarsConfig = {
+        entry: path.join(__dirname, "src", "**", "*.hbs"),
+        output: path.join(output.path, "[path]", "[name].html"),
+        data: {
+            subtools: fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
+                .filter(dirent => dirent.isDirectory())
+                .map(dirent => {
+                    const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));
+                    return {
+                        id: dirent.name,
+                        name: manifest.name,
+                        description: manifest.description,
+                        color: manifest.color,
+                        textColor: pickTextColorBasedOnBgColor(manifest.color),
+                        icon: path.join("/subtools", dirent.name, manifest.icon),
+                    }
+                }),
+        },
+    }
+
+    // These variables will be set in the extension scope
+    const webpackEnv = {
+        BUILD_TARGET,
+        SUBTOOLS: JSON.stringify(handlebarsConfig.data.subtools),
+    }
+
     const plugins = [
         new webpack.DefinePlugin(webpackEnv),
         new CopyPlugin({ patterns: copyPatterns }),
         new RemoveEmptyScriptsPlugin(),
+        new HandlebarsPlugin(handlebarsConfig),
     ];
 
 

@@ -1,6 +1,4 @@
 const subtool = {
-    name: "Zorua's Spoilerguard",
-    description: "Prevents spoiling the suspense of Pokemon Showdown battles by hiding the end-of-battle controls until the final turn ends.",
     init: function (guzztool) {
         if (!guzztool.roomListener) return;
         guzztool.roomListener.on("new", (roomId, room) => {

@@ -1,0 +1,6 @@
+{
+    "name": "Togepi's Lucky Button",
+    "description": "Adds an \"I'm feeling lucky\" button to the teambuilder that generates random sets from usage data.",
+    "color": "#e0d267",
+    "icon": "icon.png"
+}

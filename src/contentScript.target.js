@@ -4,13 +4,21 @@ Its main role is to create a <script> element in the page that will load injecte
 import { browser } from './util/util.js';
 
 
-// We inject the extension ID as a property so that the injected script can send us messages with the browser.runtime API
-// (using runtime.id will work on Chrome, but not on Firefox since it'll return the ID defined in the manifest)
-// (e.g., 'chrome-extension://dabpnahpcemkfbgfbmegmncjllieilai/contentScript.js', 'moz-extension://81b2e17b-928f-4689-a33f-501eae139258/contentScript.js')
-const mainUrl = browser.runtime.getURL('contentScript.js');
-const extensionId = mainUrl?.endsWith('contentScript.js')
-    ? mainUrl.split('/')[2] // e.g., ['chrome-extension:', '', 'dabpnahpcemkfbgfbmegmncjllieilai', 'contentScript.js']
-    : browser.runtime.id;
+window.addEventListener("message", async (event) => {
+    if (!(event.source == window &&
+        event.data &&
+        event.data.target == "guzztool-content-script")) return;
+
+    if (event.data.message === "getOptions") {
+        const data = await browser.storage.sync.get('options');
+
+        window.postMessage({
+            target: "guzztool-injected-script",
+            message: data.options,
+            id: event.data.id
+        });
+    }
+});
 
 
 // Components to inject into the page
@@ -22,7 +30,6 @@ const injectables = [
         props: {
             src: browser.runtime.getURL('injectedScript.js'),
             async: true,
-            'data-ext-id': extensionId
         },
     }
 ];

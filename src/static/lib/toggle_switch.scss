@@ -1,0 +1,166 @@
+// Adapted from https://codepen.io/josetxu/pen/Poxwpme
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@500&display=swap');
+
+
+.toggle {
+    // Variables
+    --size: 30px;
+    --on-color: #2eddf3;
+    --off-color: #68838d;
+    --transition: all 0.25s ease 0s width 0; // width 0 for responsivity
+
+
+    position: relative;
+    width: calc(var(--size) * 4);
+    height: calc(var(--size) * 2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    * {
+        box-sizing: border-box;
+        transition: var(--transition);
+    }
+
+    input {
+        display: none;
+    }
+
+    label {
+        position: absolute;
+        width: calc(var(--size) * 4);
+        height: calc(var(--size) * 2);
+        background: linear-gradient(180deg, #888, #fff);
+        border-radius: var(--size);
+        padding: calc(var(--size) / 5);
+        box-shadow: 0 0 calc(var(--size) / 50) calc(var(--size) / 50) #0002;
+
+        &::after {
+            content: "";
+            position: absolute;
+            width: calc(100% - calc(calc(var(--size) / 5) * 12));
+            height: calc(100% - calc(calc(var(--size) / 5) * 2));
+            box-shadow: 0 0 calc(var(--size) / 2) calc(var(--size) / 10) var(--on-color), 0 0 calc(var(--size) / 2) calc(var(--size) / 10) #fff;
+            border-radius: var(--size);
+            z-index: 0;
+            opacity: 0;
+            transition: var(--transition);
+            animation: move-shadow 3s ease 0s 1;
+        }
+
+        &:has(input:checked) {
+            box-shadow:
+                0 calc(var(--size) / 50) calc(var(--size) / 5) #fff9,
+                0 0 calc(var(--size) / 50) calc(var(--size) / 50) #0002;
+
+            &::after {
+                opacity: 1;
+                width: calc(100% - calc(calc(var(--size) / 5) * 4));
+            }
+
+            .track::before {
+                left: 0%;
+            }
+        }
+    }
+
+    .track {
+        position: absolute;
+        width: calc(calc(var(--size) * 4) - calc(var(--size) / 2.5));
+        height: calc(calc(var(--size) * 2) - calc(var(--size) / 2.5));
+        border-radius: var(--size);
+        overflow: hidden;
+
+        &::before {
+            content: "";
+            position: absolute;
+            width: calc(200% - calc(calc(var(--size) * 2) - calc(var(--size) / 3)));
+            height: 100%;
+            left: -50%;
+            transition: var(--transition);
+            background: linear-gradient(90deg, var(--on-color) 50%, var(--off-color) 50%);
+            animation: move-color 3s ease 0s 1;
+        }
+
+        &::after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: var(--size);
+            box-shadow: 0 calc(var(--size) / -10) calc(var(--size) / 10) 0 #0005 inset, 0 calc(var(--size) / 10) calc(var(--size) / 10) 0 #0005 inset;
+        }
+    }
+
+    .thumb {
+        position: absolute;
+        width: calc(calc(var(--size) * 2) - calc(var(--size) / 3));
+        height: calc(calc(var(--size) * 2) - calc(var(--size) / 3));
+        top: calc(calc(var(--size) / 10) + calc(var(--size) / 15));
+        left: calc(calc(var(--size) / 10) + calc(var(--size) / 15));
+        background: linear-gradient(180deg, #fff, #afafaf);
+        border-radius: var(--size);
+        box-shadow: 0 0 0 calc(var(--size) / 50) #0002, 0 calc(var(--size) / 10) calc(var(--size) / 10) 0 #0008;
+        cursor: pointer;
+        font-size: calc(var(--size) / 2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-indent: calc(var(--size) * -0.025);
+        text-shadow:
+            calc(var(--size) / -8000) calc(var(--size) / -150) calc(var(--size) / 50) #0008,
+            calc(var(--size) / 150) calc(var(--size) / 100) calc(var(--size) / 50) #fff;
+        color: #7d7c7c;
+        z-index: 1;
+        animation: move-thumb 3s ease 0s 1;
+        user-select: none;
+
+        &::after {
+            content: "|||";
+        }
+
+        &::before {
+            content: "";
+            display: block;
+            width: 70%;
+            height: 70%;
+            background: linear-gradient(180deg, #0008, #ccc, #fff);
+            position: absolute;
+            z-index: -1;
+            border-radius: var(--size);
+            border: calc(var(--size) / 50) solid #ddd;
+        }
+    }
+}
+
+.toggle label:has(input:checked) .thumb {
+    left: calc(calc(100% - calc(calc(var(--size) * 2) - calc(var(--size) / 3))) - calc(calc(var(--size) / 10) + calc(var(--size) / 15)));
+    color: var(--on-color);
+    background:
+        radial-gradient(circle at 7% 50%, #fff calc(var(--size) / 50), #fff0 calc(var(--size) / 2)),
+        radial-gradient(circle at 0 50%, var(--on-color) 10%, #fff0 60%),
+        linear-gradient(180deg, #fff, #afafaf);
+    text-shadow:
+        0 0 calc(var(--size) / 10) var(--on-color), 0 0 calc(var(--size) / 5) #fff,
+        calc(var(--size) / -8000) calc(var(--size) / -150) calc(var(--size) / 50) #0008,
+        calc(var(--size) / 150) calc(var(--size) / 100) calc(var(--size) / 50) #fff;
+}
+
+.txt::before,
+.txt::after {
+    position: absolute;
+    left: calc(var(--size) / 2);
+    top: 25%;
+    content: "ON";
+    transition: var(--transition);
+    font-size: calc(var(--size) / 1.5);
+    color: #000;
+    opacity: 0.4;
+    text-shadow: 0px -1px 1px #000, 0px 1px 2px #fff;
+}
+
+.txt::after {
+    content: "OFF";
+    left: calc(100% - calc(var(--size) / 0.625));
+}

@@ -1,19 +1,43 @@
 import { stickerify } from 'stickerify';
+import { browser } from '@guzztool/util/util.js';
 
 $(document).ready(function () {
-    $('.cell').click(function () {
-        var isActive = $(this).attr('data-active') === 'true';
-        $(this).attr('data-active', !isActive);
+    // Set size of toggle switches based on their parent cells
+    const stylesheet = Array.from(document.styleSheets)
+        .find(sheet => sheet.ownerNode.id === "toggle_switch_css");
+    const rule = Array.from(stylesheet.cssRules)
+        .find(cssRule => cssRule.selectorText === '.toggle');
+    const setSwitchSize = _ => rule.style.setProperty("--size", $('.cell').width() / 10 + 'px');
+    $(window).resize(setSwitchSize);
+    setSwitchSize();
+
+    // Set original state of switches based on settings
+    browser.storage.sync.get('options', data => {
+        for (const subtoolId in data.options) {
+            if (data.options[subtoolId].enabled) {
+                $(`.cell[data-subtool-id="${subtoolId}"] .toggle input`).prop('checked', true);
+            }
+        }
     });
 
-    $('.cell img').each(function () {
-        // const img = new Image();
-        // img.src = stickerify(this, 3, 'white').toDataURL();
-        // $(this).replaceWith(img);
-        
+    // Listen for changes in the toggle switches and update the storage
+    $('.toggle input').change(function () {
+        $(this).closest('.cell').attr('data-active', $(this).prop('checked'));
+        browser.storage.sync.get('options', data => {
+            data.options[$(this).closest('.cell').data('subtool-id')]['enabled'] = $(this).prop('checked');
+            browser.storage.sync.set({ options: data.options });
+        });
+    });
+
+    $('.cell .subtool-icon').each(function () {
+        // const img2 = new Image();
+        // img2.src = stickerify(stickerify(this, 3, 'white'), 1, 'black').toDataURL();
+        // $(this).replaceWith(img2);
+
         const stickerStrokeWidth = 5;
 
         const newCanvas = document.createElement('canvas');
+        newCanvas.classList.add('subtool-icon');
         newCanvas.width = this.width + stickerStrokeWidth * 4;
         newCanvas.height = this.height + stickerStrokeWidth * 4;
         const newCtx = newCanvas.getContext('2d');

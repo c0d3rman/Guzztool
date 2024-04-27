@@ -1,0 +1,94 @@
+body,
+html {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.grid {
+    --min-cell-size: 200px;
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--min-cell-size), 1fr));
+    width: 100%;
+
+    .cell {
+        aspect-ratio: 1/1;
+        display: flex;
+        position: relative;
+        align-items: center;
+        padding: 5%;
+        margin: 0;
+        border: 1px solid black;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        transition: background-color 0.3s;
+        // background-color: #ddd;
+        background-color: var(--subtool-color);
+        box-shadow: 0 0 10px inset;
+
+
+        /* START: The hover darkening effect */
+
+        z-index: 0; // This lets the ::after pseudo-element show up properly
+
+        &::after {
+            position: absolute;
+            content: "";
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.2));
+            transition: opacity 0.3s;
+            opacity: 0;
+            z-index: -1;
+        }
+
+        &:hover::after {
+            opacity: 1;
+        }
+
+        /* END: The hover darkening effect */
+
+        &[data-active="true"] .subtool-icon {
+
+            // background-color: #4CAF50;
+            // box-shadow: 0 0 50px 15px #48abe0, 0 0 50px 15px #48abe0 inset;
+        }
+
+        .subtool-icon {
+            width: 50%;
+            height: 50%;
+        }
+
+        .subtool-name {
+            color: var(--text-color);
+            font-weight: bold;
+            font-size: 2vw;
+            text-align: center;
+        }
+
+        &:has(input[type="checkbox"]:checked) {
+            cursor: pointer;
+        }
+
+        .settings-icon {
+            position: absolute;
+            top: 2%;
+            right: 2%;
+            width: 8%;
+            aspect-ratio: 1/1;
+            user-select: none;
+            transition: transform 0.3s ease;
+            transform-origin: center;
+            filter: brightness(0);
+            opacity: 0.2;
+        }
+
+        &:hover .settings-icon {
+            transform: scale(1.1) rotate(90deg);
+        }
+    }
+}

@@ -2,8 +2,6 @@ import { getChaosDataForFormat, generateRandomSet } from '../../util/ShowdownAPI
 
 
 const subtool = {
-    name: "Togepi's Lucky Button",
-    description: `Adds an "I'm feeling lucky" button to the teambuilder that generates random sets from usage data.`,
     init: function (guzztool) {
         if (!guzztool.roomListener) return;
         guzztool.roomListener.on("new", (roomId, room) => {
