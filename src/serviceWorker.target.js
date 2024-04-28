@@ -8,7 +8,7 @@ browser.runtime.onInstalled.addListener(async () => {
     await initializeStorageWithDefaults({
         options: SUBTOOLS.reduce((d, subtool) => {
             d[subtool.id] = {
-                enabled: true,
+                enabled: false,
             };
             return d;
         }, {}),
