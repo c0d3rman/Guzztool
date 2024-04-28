@@ -23,8 +23,8 @@ html {
         display: flex;
         flex-direction: column;
         justify-content: center;
+        user-select: none;
         transition: background-color 0.3s;
-        // background-color: #ddd;
         background-color: var(--subtool-color);
         box-shadow: 0 0 10px inset;
 
