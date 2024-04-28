@@ -23,11 +23,12 @@ const sendMessageAndWaitForResponse = async (message, target = "guzztool-content
             if (event.data && event.data.target === "guzztool-injected-script" && event.data.id === id) {
                 log.debug("Injected script received message:", event.data);
                 window.removeEventListener("message", listener);
+                clearTimeout(timeoutId);
                 resolve(event.data.message);
             }
         };
         window.addEventListener("message", listener);
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             window.removeEventListener("message", listener);
             const error = new Error(`Guzztool injected script timed out while waiting for reply to message ${id}`);
             log.error(error);
