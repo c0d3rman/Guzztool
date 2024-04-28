@@ -1,7 +1,7 @@
 const subtool = {
-    init: function (guzztool) {
-        if (!guzztool.roomListener) return;
-        guzztool.roomListener.on("new", (roomId, room) => {
+    init: function () {
+        if (!this.roomListener) return;
+        this.roomListener.on("new", (roomId, room) => {
             if (roomId.startsWith("battle-")) modifyRoom(room);
         });
     }

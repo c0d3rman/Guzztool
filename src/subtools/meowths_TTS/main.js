@@ -1,5 +1,5 @@
 const subtool = {
-	init: function (guzztool) {
+	init: function () {
 		// Only run on replays
 		const domainParts = window.location.hostname.split('.');
 		if (!(domainParts.length > 2 && domainParts[domainParts.length - 3] === "replay")) return;
@@ -30,7 +30,7 @@ const subtool = {
 			line = stripHTML(line).trim(); // Then we strip any HTML added by parseLogMessage, like <strong> for bold
 			if (args[0][0] == 'turn') line = line.replaceAll("==", "").trim(); // For turns, remove the equals signs that form the header
 			if (line) {
-				guzztool.log("speaking:", line);
+				this.log.info("speaking:", line);
 				speak(line);
 			}
 			// Then restore nicknames and perform the regular function
@@ -41,8 +41,6 @@ const subtool = {
 }
 
 async function speak(text) {
-	// window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-
 	const audio = new SpeechSynthesisUtterance(text);
 	window.speechSynthesis.speak(audio);
 	return new Promise(resolve => { audio.onend = resolve; });

@@ -2,9 +2,9 @@ import { getChaosDataForFormat, generateRandomSet } from '../../util/ShowdownAPI
 
 
 const subtool = {
-    init: function (guzztool) {
-        if (!guzztool.roomListener) return;
-        guzztool.roomListener.on("new", (roomId, room) => {
+    init: function () {
+        if (!this.roomListener) return;
+        this.roomListener.on("new", (roomId, room) => {
             if (roomId == "teambuilder") {
                 // Wrapping updateTeamView allows us to add elements to the team view that will always appear even when it's changed.
                 const teambuilderUpdateTeamView = room.updateTeamView;

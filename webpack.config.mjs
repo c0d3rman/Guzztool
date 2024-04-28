@@ -215,6 +215,7 @@ const exportForTarget = BUILD_TARGET => {
     // These variables will be set in the extension scope
     const webpackEnv = {
         BUILD_TARGET,
+        __DEV__,
         SUBTOOLS: JSON.stringify(handlebarsConfig.data.subtools),
     }
 
@@ -224,7 +225,6 @@ const exportForTarget = BUILD_TARGET => {
         new RemoveEmptyScriptsPlugin(),
         new HandlebarsPlugin(handlebarsConfig),
     ];
-
 
     // source maps for easier debugging of minified bundles
     // (values are based off of webpack's recommendations depending on the environment,

@@ -1,5 +1,6 @@
 import { browser } from '@guzztool/util/util.js';
 import { initializeStorageWithDefaults } from '@guzztool/util/storage.js';
+import log from '@guzztool/util/log.js';
 
 
 // Initialize storage on installation.
@@ -12,7 +13,7 @@ browser.runtime.onInstalled.addListener(async () => {
             return d;
         }, {}),
     });
-    console.log("Initialized default settings.");
+    log.info("Initialized default settings.");
 });
 
 // Create an offscreen document - an invisible page that gives us access to a DOMParser.
@@ -21,11 +22,18 @@ await browser.offscreen.createDocument({
     reasons: [browser.offscreen.Reason.DOM_PARSER],
     justification: 'Parse DOM'
 });
+log.info("Created offscreen document.");
 
 
 // Listen for messages from other parts of the extension.
 const handleMessage = async (request, sender, sendResponse) => {
     if (request.target != 'service-worker') return false;
+
+    log.info("Received message:", request);
+    sendResponse = (...args) => {
+        log.info("Sending response:", ...args);
+        sendResponse(...args);
+    }
 
     // Fetch a page for someone, which lets us bypass CORS issues.
     // Requires the correct "host_permissions" in manifest.json
