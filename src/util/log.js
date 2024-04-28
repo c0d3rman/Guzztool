@@ -16,7 +16,7 @@ import chalk from 'chalk';
 prefix.reg(log);
 prefix.apply(log, {
     format(level, name, timestamp) {
-        let output = chalk.bold(`GUZZTOOL ${chalk.gray(`[${timestamp}]`)} ${level}`);
+        let output = chalk.bold(`GUZZTOOL ${chalk.gray(`[${level}]`)}`);
         const subtool = SUBTOOLS.find(s => s.id === name);
         if (subtool) output += ' ' + chalk.hex(subtool.color)(name);
         output += " | ";
