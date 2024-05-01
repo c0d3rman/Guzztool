@@ -3,31 +3,16 @@ Its main role is to create a <script> element in the page that will load injecte
 
 import { browser } from '@guzztool/util/util.js';
 import log from '@guzztool/util/log.js';
+import Messaging from '@guzztool/util/messaging.js';
 
 
-// postMessage wrapper for logging
-const postMessage = (...args) => {
-    log.debug("Content script posting message:", ...args);
-    window.postMessage(...args);
-}
+const messaging = new Messaging('content-script');
 
-window.addEventListener("message", async (event) => {
-    if (!(event.source == window &&
-        event.data &&
-        event.data.target == "guzztool-content-script")) return;
 
-    log.debug("Content script received message: ", event.data);
-    if (event.data.message === "getOptions") {
-        const data = await browser.storage.sync.get('options');
-
-        postMessage({
-            target: "guzztool-injected-script",
-            message: data.options,
-            id: event.data.id
-        });
-    }
+messaging.onMessage("getOptions", async (message) => {
+    const data = await browser.storage.sync.get('options');
+    messaging.postMessage({ replyTo: message, content: data.options });
 });
-
 
 // Components to inject into the page
 const injectables = [
