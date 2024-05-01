@@ -18,11 +18,15 @@ const subtool = {
                     luckyButton.textContent = "I'm feeling lucky";
                     luckyButton.classList.add("button");
                     luckyButton.addEventListener('click', async () => {
+                        try {
                         const data = await getChaosDataForFormat(room.curTeam.format);
                         const randomMon = Object.keys(data.data)[Math.floor(Math.random() * Object.keys(data.data).length)];
                         const monData = data.data[randomMon];
                         const randomSet = generateRandomSet(randomMon, monData);
-                        room.clipboardAdd(randomSet);
+                            room.clipboardAdd(randomSet);
+                        } catch (e) {
+                            this.log.error(e);
+                        }
                     });
                     formatSelect.insertAdjacentElement('afterend', luckyButton);
                 }
