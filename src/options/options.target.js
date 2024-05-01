@@ -1,48 +1,51 @@
 import { browser } from '@guzztool/util/util.js';
-// import { stickerify } from 'stickerify';
-// stickerify = (img) => {
-//     const img2 = new Image();
-//     img2.src = stickerify(stickerify(img, 3, 'white'), 1, 'black').toDataURL();
-//     $(img).replaceWith(img2);
-// }
 
 // Adapted from https://web.archive.org/web/20190410091350/http://artplustech.com/sticker-effect-on-transparent-pngs-with-html5-canvas/
 const stickerify = (img, ...args) => {
-    const stickerStrokeWidth = 5;
+    const stickerStrokeThickness = 30; // Pixel width is relative to the canvas dimension below
 
+    // We work on a large fixed-size canvas,
+    // both so the sticker stroke thickness is consistent regardless of original image size
+    // and to maintain high quality even if the screen is later resized
+    const canvasDimension = 2000; // Not including sticker stroke
+    const scaleFactor = Math.min(canvasDimension / img.width, canvasDimension / img.height); // The amount to scale the image so it fits in the canvas
+    const [scaledImgWidth, scaledImgHeight] = [img.width * scaleFactor, img.height * scaleFactor];
+
+    // Create the canvas for the sticker
     const newCanvas = document.createElement('canvas');
     newCanvas.classList.add('subtool-icon');
-    newCanvas.width = img.width + stickerStrokeWidth * 4;
-    newCanvas.height = img.height + stickerStrokeWidth * 4;
+    const buffer = stickerStrokeThickness * 8; // Some buffer area to avoid clipping at the edges
+    newCanvas.width = canvasDimension + buffer;
+    newCanvas.height = canvasDimension + buffer;
     const newCtx = newCanvas.getContext('2d');
 
+    // Draw a blurred version of the original image to the canvas
     newCtx.shadowColor = 'white';
-    newCtx.shadowBlur = stickerStrokeWidth;
-    // newCtx.shadowOffsetX = 0;
-    // newCtx.shadowOffsetY = 0;
-    newCtx.drawImage(img, stickerStrokeWidth * 2, stickerStrokeWidth * 2, img.width, img.height);
+    newCtx.shadowBlur = stickerStrokeThickness;
+    const imageX = (canvasDimension + buffer - scaledImgWidth) / 2; // Center the image
+    const imageY = (canvasDimension + buffer - scaledImgHeight) / 2;
+    newCtx.drawImage(img,
+        imageX, imageY,
+        scaledImgWidth, scaledImgHeight);
 
-    // get contents of blurry bordered image
+    // Turn all non-transparent pixels of the blurred image to full opacity,
+    // giving us the outline of the sticker
     const imgData = newCtx.getImageData(0, 0, newCtx.canvas.width - 1, newCtx.canvas.height - 1);
-    const opaqueAlpha = 255;
-
-    // turn all non-transparent pixels to full opacity
     for (let i = imgData.data.length; i > 0; i -= 4) {
         if (imgData.data[i + 3] > 0) {
-            imgData.data[i + 3] = opaqueAlpha;
+            imgData.data[i + 3] = 255;
         }
     }
-
-    // write transformed opaque pixels back to image
     newCtx.putImageData(imgData, 0, 0);
 
-    // Create drop shadow
+    // Draw the original image back onto the canvas, with a drop shadow
     newCtx.shadowColor = '#555';
-    newCtx.shadowBlur = stickerStrokeWidth * 2;
+    newCtx.shadowBlur = stickerStrokeThickness * 2;
     newCtx.shadowOffsetX = 0;
     newCtx.shadowOffsetY = 0;
     newCtx.drawImage(newCanvas, 0, 0);
 
+    // Replace the original image with the sticker
     $(img).replaceWith(newCanvas);
 }
 

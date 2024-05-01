@@ -21,7 +21,6 @@
     "sass": "^1.75.0",
     "sass-loader": "^14.2.1",
     "source-map-loader": "^5.0.0",
-    "stickerify": "^0.2.3",
     "style-loader": "^4.0.0",
     "url-join": "^5.0.0",
     "webpack": "^5.91.0",
