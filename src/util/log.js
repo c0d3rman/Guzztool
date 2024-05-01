@@ -1,5 +1,5 @@
 /*
-Guzzlords' logger. Use in any file with
+Guzztool's logger. Use in any file with
 ```
 import log from '@guzzlord/util/log.js';
 ```
