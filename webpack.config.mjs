@@ -78,6 +78,13 @@ const exportForTarget = BUILD_TARGET => {
     };
 
 
+    const subtoolManifests = fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .reduce((acc, dirent) => {
+            acc[dirent.name] = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));;
+            return acc;
+        }, {});
+
     const isStaticFile = filepath => !(
         filepath == 'src/manifest.json' || // The manifest is not static
         (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath)) || // JS files are not static unless they're in a lib/ folder
@@ -104,14 +111,14 @@ const exportForTarget = BUILD_TARGET => {
                 parsed.homepage_url = process.env.npm_package_homepage;
 
                 // Autofill matches for content_scripts, web_accessible_resources, and externally_connectable
+                const gatheredMathes = [...new Set(Object.values(subtoolManifests).map(manifest => manifest.matches).flat())];
                 for (const segment of [parsed.content_scripts, parsed.web_accessible_resources, parsed.externally_connectable]) {
                     if (segment) {
                         for (const subentry of Array.isArray(segment) ? segment : [segment]) {
-                            subentry.matches = subentry.matches.flatMap(match => match == "<MATCHES>" ? parsed.MATCHES : match);
+                            subentry.matches = subentry.matches.flatMap(match => match == "<MATCHES>" ? gatheredMathes : match);
                         }
                     }
                 }
-                delete parsed.MATCHES;
 
                 // All static files are web-accessible
                 let web_accessible_resources = glob.sync('**/*', { cwd: path.resolve(__dirname, 'src'), nodir: true })
@@ -199,18 +206,13 @@ const exportForTarget = BUILD_TARGET => {
         entry: path.join(__dirname, "src", "**", "*.hbs"),
         output: path.join(output.path, "[path]", "[name].html"),
         data: {
-            subtools: fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
-                .filter(dirent => dirent.isDirectory())
-                .map(dirent => {
-                    const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));
-                    return {
-                        id: dirent.name,
-                        name: manifest.name,
-                        description: manifest.description,
-                        color: manifest.color,
-                        textColor: pickTextColorBasedOnBgColor(manifest.color),
-                        icon: path.join("/subtools", dirent.name, manifest.icon),
-                    }
+            subtools: Object.entries(subtoolManifests)
+                .map(([id, manifest]) => {
+                    const subtool = Object.assign({}, manifest);
+                    subtool.id = id;
+                    subtool.textColor = pickTextColorBasedOnBgColor(manifest.color);
+                    subtool.iconPath = path.join("/subtools", id, manifest.icon);
+                    return subtool;
                 }),
         },
     }

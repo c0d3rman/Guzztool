@@ -4,11 +4,6 @@
   "background": {
     "service_worker": "serviceWorker.js"
   },
-  "MATCHES": [
-    "*://play.pokemonshowdown.com/*",
-    "*://replay.pokemonshowdown.com/*",
-    "*://*.psim.us/*"
-  ],
   "content_scripts": [
     {
       "matches": [

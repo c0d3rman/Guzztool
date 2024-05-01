@@ -2,5 +2,7 @@
 	"name": "Meowth's TTS",
 	"description": "Uses text-to-speech to read out battles and replays.",
 	"icon": "icon.png",
-	"color": "#6c87a3"
+	"color": "#6c87a3",
+	"matches": ["*://replay.pokemonshowdown.com/*"]
 }
+

@@ -2,5 +2,6 @@
 	"name": "Prof. Eevee",
 	"description": "Helps design EV spreads.",
 	"icon": "icon.png",
-	"color": "#c59c60"
+	"color": "#c59c60",
+	"matches": ["*://play.pokemonshowdown.com/*", "*://*.psim.us/*"]
 }

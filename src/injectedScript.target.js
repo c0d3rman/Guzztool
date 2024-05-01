@@ -32,15 +32,24 @@ try {
     }
 
     (async () => {
-        // Call all subtools
-        for (const subtool of subtools) {
-            subtool.roomListener = roomListener;
-            await subtool.init();
-            subtool.log.info("Loaded");
-        }
+        try {
+            // Call all subtools
+            for (const subtool of subtools) {
+                try { // Inner guard so one subtool crashing doesn't affect the others
+                    if (!subtool.manifest.matches.some(match => new URLPattern(match).test(window.location))) continue;
+                    subtool.roomListener = roomListener;
+                    await subtool.init();
+                    subtool.log.info("Loaded");
+                } catch (e) {
+                    subtool.log.error(e);
+                }
+            }
 
-        // Init the room listener if it exists
-        roomListener?.initialize();
+            // Init the room listener if it exists
+            roomListener?.initialize();
+        } catch (e) {
+            log.error(e);
+        }
     })();
 } catch (e) {
     log.error(e);

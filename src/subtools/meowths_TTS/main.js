@@ -1,8 +1,6 @@
 const subtool = {
 	init: function () {
-		// Only run on replays
-		const domainParts = window.location.hostname.split('.');
-		if (!(domainParts.length > 2 && domainParts[domainParts.length - 3] === "replay")) return;
+		if (!window.battle) return;
 
 		const pokemonNameOriginal = window.battle.scene.log.battleParser.pokemonName;
 		const pokemonNameModified = (...args) => {

@@ -2,5 +2,7 @@
 	"name": "Pikachu's Elo Hider",
 	"description": "Hides your elo changes at the end of battles to reduce stress.",
 	"icon": "icon.png",
-	"color": "#97c4ad"
+	"color": "#97c4ad",
+	"matches": ["*://play.pokemonshowdown.com/*", "*://*.psim.us/*"]
 }
+
