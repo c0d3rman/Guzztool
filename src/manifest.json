@@ -41,10 +41,10 @@
     "open_in_tab": true
   },
   "icons": {
-    "16": "static/icons/16x.png",
-    "32": "static/icons/32x.png",
-    "48": "static/icons/48x.png",
-    "128": "static/icons/128x.png"
+    "16": "static/icons/icon16.png",
+    "32": "static/icons/icon32.png",
+    "48": "static/icons/icon48.png",
+    "128": "static/icons/icon128.png"
   },
   "browser_specific_settings": {
     "gecko": {
