@@ -9,10 +9,41 @@ import Messaging from '@guzztool/util/messaging.js';
 try {
     const messaging = new Messaging('content-script');
 
+    // Fetch options and pass them to the injected script
+    const options = (await browser.storage.sync.get('options')).options;
+    log.debug("Options:", options);
     messaging.onMessage("getOptions", async (message) => {
-        const data = await browser.storage.sync.get('options');
-        messaging.postMessage({ replyTo: message, content: data.options });
+        messaging.postMessage({ replyTo: message, content: options });
     });
+
+    // Dynamically import all subtools
+    const subtools = SUBTOOLS.map((manifest) => {
+        try { // Inner guard so one subtool crashing doesn't affect the others
+            if (!options[manifest.id]?.enabled) return;
+            if (!manifest.matches.some(match => new URLPattern(match).test(window.location))) return;
+
+            const subtool = require(`@guzztool/subtools/${manifest.id}/content.js`).default;
+            subtool.manifest = manifest;
+            subtool.options = options[manifest.id];
+            subtool.log = log.getLogger(manifest.id);
+            subtool.messaging = messaging.getContext(manifest.id);
+            return subtool;
+        } catch (e) {
+            if (e.code === 'MODULE_NOT_FOUND') return; // Subtool doesn't have a content.js
+            log.error(e, "\nManifest:", manifest);
+        }
+    }).filter(subtool => typeof subtool !== 'undefined');
+
+    // Run all subtool content scripts
+    for (const subtool of subtools) {
+        try { // Inner guard so one subtool crashing doesn't affect the others
+            subtool.log.info("Loading content.js");
+            await subtool.init();
+        } catch (e) {
+            subtool.log.error(e);
+        }
+    }
+
 
     // Components to inject into the page
     const injectables = [
@@ -39,4 +70,3 @@ try {
 } catch (e) {
     log.error(e);
 }
-
