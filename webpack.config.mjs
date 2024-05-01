@@ -130,6 +130,8 @@ const exportForTarget = BUILD_TARGET => {
                     .map(([k, v]) => typeof v == 'string' ? [[k, v]] : v.map(v2 => [k, v2])).flat()
                     .filter(([k, v]) => v.endsWith(".target.js"))
                     .map(([k, v]) => k.replace(/^\.\//, '') + ".js"));
+                // Encode all spaces and such in web_accessible_resources
+                web_accessible_resources = web_accessible_resources.map(encodeURI);
                 // Now autofill the web_accessible_resources into the manifest
                 for (const subentry of parsed.web_accessible_resources) {
                     subentry.resources = subentry.resources.flatMap(resource => resource == "<WEB ACCESSIBLE RESOURCES>" ? web_accessible_resources : resource);
