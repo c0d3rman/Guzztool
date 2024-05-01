@@ -138,6 +138,9 @@ const exportForTarget = BUILD_TARGET => {
                     // remove MV2-specific background properties
                     delete parsed.background?.persistent;
                     delete parsed.background?.scripts;
+
+                    // delete browser_specific_settings, which Chrome doesn't recognize
+                    delete parsed.browser_specific_settings;
                 } else if (BUILD_TARGET == 'firefox') {
                     // set to Manifest V2 (MV2) for Firefox
                     parsed.manifest_version = 2;
