@@ -56,9 +56,18 @@ $(document).ready(function () {
         .find(sheet => sheet.ownerNode.id === "toggle_switch_css");
     const rule = Array.from(stylesheet.cssRules)
         .find(cssRule => cssRule.selectorText === '.toggle');
-    const setSwitchSize = _ => rule.style.setProperty("--size", $('.cell').width() / 10 + 'px');
-    $(window).resize(setSwitchSize);
-    setSwitchSize();
+    const resize = _ => {
+        rule.style.setProperty("--size", $('.cell').width() / 10 + 'px');
+
+        // Fit titles to their cells
+        const percentWidth = (el) => $(el).width() / $(el).parent().width();
+        const maxPercentWidthName = $('.subtool-name').toArray().reduce((max, el) => percentWidth(el) > percentWidth(max) ? el : max);
+        const adjustmentFactor = 1 / percentWidth(maxPercentWidthName);
+        const fontSize = parseFloat(window.getComputedStyle(maxPercentWidthName, null).getPropertyValue('font-size'));
+        $('.subtool-name').css('font-size', `${adjustmentFactor * fontSize}px`);
+    }
+    $(window).resize(resize);
+    resize();
 
     // Set original state of switches based on settings
     browser.storage.sync.get('options', data => {

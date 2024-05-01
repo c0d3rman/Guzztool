@@ -61,6 +61,7 @@ html {
             font-weight: bold;
             font-size: 2vw;
             text-align: center;
+            white-space: nowrap;
         }
 
         &:has(input[type="checkbox"]:checked) {
