@@ -45,9 +45,3 @@ export function setStorageItem(key, value) {
     });
   });
 }
-
-export async function initializeStorageWithDefaults(defaults) {
-  const currentStorageData = await getStorageData();
-  const newStorageData = Object.assign({}, defaults, currentStorageData);
-  await setStorageData(newStorageData);
-}

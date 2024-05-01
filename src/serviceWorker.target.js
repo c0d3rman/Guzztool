@@ -1,18 +1,21 @@
 import { browser } from '@guzztool/util/util.js';
-import { initializeStorageWithDefaults } from '@guzztool/util/storage.js';
+import { getStorageData, setStorageData } from '@guzztool/util/storage.js';
 import log from '@guzztool/util/log.js';
 
 
 // Initialize storage on installation.
 browser.runtime.onInstalled.addListener(async () => {
-    await initializeStorageWithDefaults({
-        options: SUBTOOLS.reduce((d, subtool) => {
-            d[subtool.id] = {
-                enabled: false,
-            };
-            return d;
-        }, {}),
-    });
+    const currentStorageData = await getStorageData();
+
+    if (!currentStorageData.options) currentStorageData.options = {};
+    currentStorageData.options = Object.assign({}, SUBTOOLS.reduce((d, subtool) => {
+        d[subtool.id] = {
+            enabled: false,
+        };
+        return d;
+    }, {}), currentStorageData.options);
+
+    await setStorageData(currentStorageData);
     log.info("Initialized default settings.");
 });
 
