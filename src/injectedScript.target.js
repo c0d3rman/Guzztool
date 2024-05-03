@@ -4,6 +4,9 @@ import { RoomListener } from '@guzztool/util/RoomListener.js';
 import log from '@guzztool/util/log.js';
 import Messaging from '@guzztool/util/messaging.js';
 
+// Polyfill
+if (!globalThis.URLPattern) require("urlpattern-polyfill");
+
 
 try {
     const messaging = new Messaging('injected-script');

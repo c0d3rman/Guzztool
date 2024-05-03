@@ -138,37 +138,33 @@ const exportForTarget = BUILD_TARGET => {
                 };
 
                 if (BUILD_TARGET == 'chrome') {
-                    // set to Manifest V3 (MV3) for Chrome
+                    // Set to Manifest V3 (MV3) for Chrome
                     parsed.manifest_version = 3;
 
-                    // applications is not used on Chrome
-                    delete parsed.applications;
-
-                    // remove MV2-specific background properties
-                    delete parsed.background?.persistent;
-                    delete parsed.background?.scripts;
-
-                    // delete browser_specific_settings, which Chrome doesn't recognize
+                    // Delete browser_specific_settings, which Chrome doesn't recognize
                     delete parsed.browser_specific_settings;
                 } else if (BUILD_TARGET == 'firefox') {
-                    // set to Manifest V2 (MV2) for Firefox
+                    // Set to Manifest V2 (MV2) for Firefox
                     parsed.manifest_version = 2;
 
-                    // set Firefox-specific permissions
-                    // const { permissions = [] } = applications.gecko;
-                    // parsed.permissions.unshift(...permissions);
-                    // delete applications.gecko.permissions;
+                    // Firefox doesn't support service workers, so convert them to background scripts
+                    if (parsed.background?.service_worker) {
+                        parsed.background.scripts = [parsed.background.service_worker];
+                        delete parsed.background.service_worker;
+                    }
 
-                    // remove properties not used on Firefox
-                    // Service worker is for Chrome, FireFox uses background/scripts
-                    // delete parsed.background;
-                    // delete parsed.action;
-
-                    // remove properties not supported on MV2
+                    // Remove properties not supported by firefox
                     delete parsed.externally_connectable;
+                    if (parsed.permissions) parsed.permissions = parsed.permissions.filter(permission => permission !== "offscreen");
 
-                    // format web_accessible_resources in MV2's format
+                    // Format web_accessible_resources for MV2
                     parsed.web_accessible_resources = parsed.web_accessible_resources.flatMap(resource => resource.resources);
+
+                    // Move host_permissions into permissions for MV2
+                    if (parsed.host_permissions) {
+                        parsed.permissions = (parsed.permissions || []).concat(parsed.host_permissions);
+                        delete parsed.host_permissions;
+                    }
                 }
 
                 return Buffer.from(JSON.stringify(parsed, null, __DEV__ ? 4 : 0));
@@ -221,8 +217,8 @@ const exportForTarget = BUILD_TARGET => {
 
     // These variables will be set in the extension scope
     const webpackEnv = {
-        BUILD_TARGET,
-        __DEV__,
+        BUILD_TARGET: `'${BUILD_TARGET}'`,
+        __DEV__: `'${__DEV__}'`,
         SUBTOOLS: JSON.stringify(handlebarsConfig.data.subtools),
     }
 

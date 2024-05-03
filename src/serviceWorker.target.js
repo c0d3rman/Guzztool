@@ -20,12 +20,15 @@ browser.runtime.onInstalled.addListener(async () => {
 });
 
 // Create an offscreen document - an invisible page that gives us access to a DOMParser.
-await browser.offscreen.createDocument({
-    url: '/offscreen.html',
-    reasons: [browser.offscreen.Reason.DOM_PARSER],
-    justification: 'Parse DOM'
-});
-log.info("Created offscreen document.");
+if (BUILD_TARGET == 'chrome') {
+    await browser.offscreen?.createDocument({
+        url: '/offscreen.html',
+        reasons: [browser.offscreen.Reason.DOM_PARSER],
+        justification: 'Parse DOM'
+    }).then(() => { log.info("Created offscreen document."); });
+} else if (BUILD_TARGET == 'firefox') {
+    // TBD access DOMParser directly
+}
 
 
 // Listen for messages from other parts of the extension.
