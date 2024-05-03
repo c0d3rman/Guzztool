@@ -12,8 +12,10 @@ import CopyPlugin from 'copy-webpack-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
 import HandlebarsPlugin from 'handlebars-webpack-plugin';
+import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath.js';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
+import helpers from './handlebarsHelpers.js';
 
 
 // __dirname is not available in ESModules so we shim it
@@ -54,7 +56,7 @@ const exportForTarget = BUILD_TARGET => {
         { // build source maps for JS files
             test: /\.js$/i,
             enforce: "pre",
-            use: ["source-map-loader"],
+            loader: "source-map-loader",
             exclude: /node_modules/,
         },
         { // build CSS files
@@ -70,6 +72,10 @@ const exportForTarget = BUILD_TARGET => {
                 "sass-loader",
             ],
         },
+        { // load Handlebars files
+            test: /\.handlebars$/,
+            loader: 'handlebars-loader',
+        }
     ];
 
     const resolve = {
@@ -88,7 +94,7 @@ const exportForTarget = BUILD_TARGET => {
     const isStaticFile = filepath => !(
         filepath == 'src/manifest.json' || // The manifest is not static
         (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath)) || // JS files are not static unless they're in a lib/ folder
-        filepath.endsWith('.hbs') || // Handlebars templates are not static
+        filepath.endsWith('.handlebars') || // Handlebars templates are not static
         Object.values(entry).flat().some(e => path.relative(e, filepath) == '') // Any file which is an entry point is not static (since it gets built)
     );
     const copyPatterns = [
@@ -182,33 +188,25 @@ const exportForTarget = BUILD_TARGET => {
         })],
     };
 
-    // Adapted from https://stackoverflow.com/a/41491220/2674563
-    function pickTextColorBasedOnBgColor(bgColor) {
-        const [lightColor, darkColor] = ['#FFFFFF', '#000000'];
-        var color = (bgColor.charAt(0) === '#') ? bgColor.substring(1, 7) : bgColor;
-        var r = parseInt(color.substring(0, 2), 16); // hexToR
-        var g = parseInt(color.substring(2, 4), 16); // hexToG
-        var b = parseInt(color.substring(4, 6), 16); // hexToB
-        var uicolors = [r / 255, g / 255, b / 255];
-        var c = uicolors.map((col) => {
-            if (col <= 0.03928) {
-                return col / 12.92;
-            }
-            return Math.pow((col + 0.055) / 1.055, 2.4);
-        });
-        var L = (0.2126 * c[0]) + (0.7152 * c[1]) + (0.0722 * c[2]);
-        return (L > 0.179) ? darkColor : lightColor;
-    }
-
+    let mostRecentTemplatePath = null;
     const handlebarsConfig = {
-        entry: path.join(__dirname, "src", "**", "*.hbs"),
+        entry: path.join(__dirname, "src", "**", "*.target.handlebars"),
         output: path.join(output.path, "[path]", "[name].html"),
+        getTargetFilepath: (filepath, outputTemplate, rootFolder) => {
+            mostRecentTemplatePath = filepath; // onBeforeCompile is called next but not given the path, so we jank it
+            filepath = filepath.replace(/\.target\.handlebars$/, '.handlebars');
+            return getTargetFilepath(filepath, outputTemplate, rootFolder);
+        },
+        // Resolve all relative partial paths to package-absolute paths
+        onBeforeCompile: (_, templateContent) => templateContent.replace(/(?<={{>\s*)([^\s]+)(?=.*?}})/g, // This grabs just the relative path of the partial
+            (_, partialPath) => path.relative('src', path.join(path.dirname(mostRecentTemplatePath), partialPath))), // This combines the relative partial path with the path of the template it's in, and then resolves it relative to src, which is the partial root (for some reason)
+        partials: glob.sync(path.join(__dirname, "src", "**", "*.handlebars")).filter(f => !f.endsWith('.target.handlebars')),
+        helpers,
         data: {
             subtools: Object.entries(subtoolManifests)
                 .map(([id, manifest]) => {
                     const subtool = Object.assign({}, manifest);
                     subtool.id = id;
-                    subtool.textColor = pickTextColorBasedOnBgColor(manifest.color);
                     subtool.iconPath = path.join("/subtools", id, manifest.icon);
                     return subtool;
                 }),

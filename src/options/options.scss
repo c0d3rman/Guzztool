@@ -5,67 +5,78 @@ html {
     font-family: Arial, sans-serif;
 }
 
-.grid {
+#app {
     --min-cell-size: 200px;
+    --subpage-animation-duration: 1s;
+    --hover-animation-duration: 0.3s;
+}
 
+#grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(var(--min-cell-size), 1fr));
     width: 100%;
+}
 
-    .cell {
+.cell {
+    box-sizing: border-box;
+    padding: 5%;
+    margin: 0;
+    border: 1px solid black;
+    background-color: var(--subtool-color);
+    transition: all var(--subpage-animation-duration);
+
+    &:not(.subpage) {
         aspect-ratio: 1/1;
         display: flex;
+        flex-direction: column;
         position: relative;
         align-items: center;
-        padding: 5%;
-        margin: 0;
-        border: 1px solid black;
-        display: flex;
-        flex-direction: column;
+        box-shadow: 0 0 10px inset;
         justify-content: center;
         user-select: none;
-        transition: background-color 0.3s;
-        background-color: var(--subtool-color);
-        box-shadow: 0 0 10px inset;
+    }
 
+    &.subpage {
+        overflow: auto;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        top: 0;
+        left: 0;
+    }
 
-        /* START: The hover darkening effect */
+    .subtool-icon {
+        height: 50%;
+    }
 
-        z-index: 0; // This lets the ::after pseudo-element show up properly
+    .subtool-name {
+        color: var(--text-color);
+        font-weight: bold;
+        font-size: 2vw;
+        text-align: center;
+        white-space: nowrap;
+    }
 
-        &::after {
-            position: absolute;
-            content: "";
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.2));
-            transition: opacity 0.3s;
-            opacity: 0;
-            z-index: -1;
-        }
+    &:has(input[type="checkbox"]:checked) {
+        cursor: pointer;
+    }
 
-        &:hover::after {
-            opacity: 1;
-        }
+    /* START: The hover darkening effect */
 
-        /* END: The hover darkening effect */
+    .hover-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.2));
+        opacity: 0; // The hover overlay starts hidden
 
-        .subtool-icon {
-            height: 50%;
-        }
-
-        .subtool-name {
-            color: var(--text-color);
-            font-weight: bold;
-            font-size: 2vw;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        &:has(input[type="checkbox"]:checked) {
-            cursor: pointer;
+        &.hover-animation-active {
+            // The transition for the hover overlay is only active when the .hover-animation-active class is present,
+            // which lets us instantly set the initial opacity in the cloned subpage cell without it animating
+            // (jQuery then handles fading it out over the duration of the subpage animation)
+            transition: opacity var(--hover-animation-duration);
         }
 
         .settings-icon {
@@ -75,14 +86,23 @@ html {
             width: 8%;
             aspect-ratio: 1/1;
             user-select: none;
-            transition: transform 0.3s ease;
+            transition: transform var(--hover-animation-duration) ease, opacity var(--hover-animation-duration) ease;
             transform-origin: center;
             filter: brightness(0);
             opacity: 0.2;
         }
+    }
 
-        &:hover .settings-icon {
+    &:hover .hover-overlay.hover-animation-active {
+        // When you hover over a cell with an active hover animation, the overlay becomes visible, darkening the background.
+        // This does not happen for the subpage, since we remove the .hover-animation-active class before the subpage animation starts.
+        opacity: 1;
+
+        .settings-icon {
             transform: scale(1.1) rotate(90deg);
+            opacity: 0.3;
         }
     }
+
+    /* END: The hover darkening effect */
 }
