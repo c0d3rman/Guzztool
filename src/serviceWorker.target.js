@@ -8,7 +8,7 @@ browser.runtime.onInstalled.addListener(async () => {
     const currentStorageData = await getStorageData();
 
     if (!currentStorageData.options) currentStorageData.options = {};
-    currentStorageData.options = Object.assign({}, SUBTOOLS.reduce((d, subtool) => {
+    currentStorageData.options = Object.assign(Object.values(SUBTOOLS).reduce((d, subtool) => {
         d[subtool.id] = {
             enabled: false,
         };

@@ -20,7 +20,7 @@ try {
     });
 
     // Dynamically import all subtools
-    const subtools = SUBTOOLS.map((manifest) => {
+    const subtools = Object.values(SUBTOOLS).map((manifest) => {
         try { // Inner guard so one subtool crashing doesn't affect the others
             if (!options[manifest.id]?.enabled) return;
             if (!manifest.matches.some(match => new URLPattern(match).test(window.location))) return;

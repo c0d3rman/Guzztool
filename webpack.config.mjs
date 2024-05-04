@@ -211,13 +211,16 @@ const exportForTarget = BUILD_TARGET => {
                     return subtool;
                 }),
         },
-    }
+    };
 
-    // These variables will be set in the extension scope
+    // These keywords will be replaced with the given strings in all JS files
     const webpackEnv = {
         BUILD_TARGET: `'${BUILD_TARGET}'`,
         __DEV__: `'${__DEV__}'`,
-        SUBTOOLS: JSON.stringify(handlebarsConfig.data.subtools),
+        SUBTOOLS: JSON.stringify(handlebarsConfig.data.subtools.reduce((acc, subtool) => { // Convert the subtools list to a dictionary indexed by ID
+            acc[subtool.id] = subtool;
+            return acc;
+        }, {})),
     }
 
     const plugins = [
