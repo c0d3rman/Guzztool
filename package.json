@@ -17,6 +17,7 @@
     "handlebars": "^4.7.8",
     "handlebars-loader": "^1.7.3",
     "handlebars-webpack-plugin": "^2.2.1",
+    "lodash": "^4.17.21",
     "loglevel": "^1.9.1",
     "loglevel-plugin-prefix": "^0.8.4",
     "sass": "^1.75.0",

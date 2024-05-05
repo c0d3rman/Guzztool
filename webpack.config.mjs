@@ -6,6 +6,7 @@ including collecting multiple JS files into one and filling in manifest.json.
 
 import path from 'path';
 import fs from 'fs';
+import _ from 'lodash';
 import { fileURLToPath } from 'url';
 import webpack from 'webpack';
 import CopyPlugin from 'copy-webpack-plugin';
@@ -15,6 +16,7 @@ import HandlebarsPlugin from 'handlebars-webpack-plugin';
 import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath.js';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
+import SUBTOOL_ORDER from './src/subtools/subtool_order.json' with { type: "json" };
 
 
 // __dirname is not available in ESModules so we shim it
@@ -51,12 +53,33 @@ const exportForTarget = BUILD_TARGET => {
         clean: true, // clears out the build folder before building
     };
 
-    const subtoolManifests = fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
+    const SUBTOOLS = fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .reduce((acc, dirent) => {
             acc[dirent.name] = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));;
+            acc[dirent.name].id = dirent.name;
+            acc[dirent.name].iconPath = path.join("/subtools", dirent.name, acc[dirent.name].icon);
             return acc;
         }, {});
+    SUBTOOLS["_guzztool"] = { // A fake "subtool" which represents the global Guzztool, so we can have settings for it
+        id: "_guzztool",
+        name: "Guzztool",
+        color: "#45474c",
+        description: "Global Guzztool settings",
+        icon: "icon.svg",
+        iconPath: "/static/icons/icon.svg",
+        matches: [],
+        settings: [
+            {
+                "id": "test",
+                "type": "boolean",
+                "title": "Test setting",
+                "default": true
+            },
+        ],
+    };
+    if (!_.isEmpty(_.xor(Object.keys(SUBTOOLS), SUBTOOL_ORDER)))
+        throw Error(`Some keys are in only one of SUBTOOLS or SUBTOOL_ORDER: ${_.xor(Object.keys(SUBTOOLS), SUBTOOL_ORDER)}`);
 
     const handlebarsPluginConfig = {
         entry: path.join(__dirname, "src", "**", "*.target.handlebars"),
@@ -72,15 +95,10 @@ const exportForTarget = BUILD_TARGET => {
             return path.join(relative.dir, relative.name);
         },
         partials: glob.sync(path.join(__dirname, "src", "**", "*.handlebars")).filter(f => !f.endsWith('.target.handlebars')),
-        helpers: {_: path.join(__dirname, "handlebars_helpers", "*.js")},
+        helpers: { all: path.join(__dirname, "handlebars_helpers", "*.js") },
         data: {
-            subtools: Object.entries(subtoolManifests)
-                .map(([id, manifest]) => {
-                    const subtool = Object.assign({}, manifest);
-                    subtool.id = id;
-                    subtool.iconPath = path.join("/subtools", id, manifest.icon);
-                    return subtool;
-                }),
+            subtools: SUBTOOLS,
+            subtool_order: SUBTOOL_ORDER,
         },
     };
 
@@ -149,7 +167,7 @@ const exportForTarget = BUILD_TARGET => {
                 parsed.homepage_url = process.env.npm_package_homepage;
 
                 // Autofill matches for content_scripts, web_accessible_resources, and externally_connectable
-                const gatheredMathes = [...new Set(Object.values(subtoolManifests).map(manifest => manifest.matches).flat())];
+                const gatheredMathes = [...new Set(Object.values(SUBTOOLS).map(subtool => subtool.matches).flat())];
                 for (const segment of [parsed.content_scripts, parsed.web_accessible_resources, parsed.externally_connectable]) {
                     if (segment) {
                         for (const subentry of Array.isArray(segment) ? segment : [segment]) {
@@ -224,10 +242,8 @@ const exportForTarget = BUILD_TARGET => {
     const webpackEnv = {
         BUILD_TARGET: `'${BUILD_TARGET}'`,
         __DEV__: `'${__DEV__}'`,
-        SUBTOOLS: JSON.stringify(handlebarsPluginConfig.data.subtools.reduce((acc, subtool) => { // Convert the subtools list to a dictionary indexed by ID
-            acc[subtool.id] = subtool;
-            return acc;
-        }, {})),
+        SUBTOOLS: JSON.stringify(SUBTOOLS),
+        SUBTOOL_ORDER: JSON.stringify(SUBTOOL_ORDER),
     }
 
     const plugins = [

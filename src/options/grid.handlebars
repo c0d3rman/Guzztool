@@ -1,11 +1,15 @@
 <div id="grid">
-  {{#each subtools}}
+  {{#each subtool_order as |subtool_id|}}
+  {{#with (lookup ../subtools subtool_id)}}
   <div class="cell" data-subtool-id="{{this.id}}"
     style="--subtool-color: {{this.color}}; --text-color: {{pickTextColorBasedOnBgColor this.color}};">
     <div class="hover-overlay hover-animation-active"><img class="settings-icon" src="/options/cog.png"></div>
     <img class="subtool-icon" src="{{this.iconPath}}">
     <p class="subtool-name">{{this.name}}</p>
+    {{#if (ne this.id "_guzztool")}}
     {{> static/lib/toggle_switch}}
+    {{/if}}
   </div>
+  {{/with}}
   {{/each}}
 </div>
