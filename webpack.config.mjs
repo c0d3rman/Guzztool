@@ -15,7 +15,6 @@ import HandlebarsPlugin from 'handlebars-webpack-plugin';
 import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath.js';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
-import helpers from './handlebarsHelpers.js';
 
 
 // __dirname is not available in ESModules so we shim it
@@ -73,7 +72,7 @@ const exportForTarget = BUILD_TARGET => {
             return path.join(relative.dir, relative.name);
         },
         partials: glob.sync(path.join(__dirname, "src", "**", "*.handlebars")).filter(f => !f.endsWith('.target.handlebars')),
-        helpers,
+        helpers: {_: path.join(__dirname, "handlebars_helpers", "*.js")},
         data: {
             subtools: Object.entries(subtoolManifests)
                 .map(([id, manifest]) => {
@@ -114,7 +113,7 @@ const exportForTarget = BUILD_TARGET => {
             loader: 'handlebars-loader',
             options: {
                 partialResolver: (partial, callback) => callback(null, partialMap[partial]),
-                helperResolver: (helper, callback) => callback(null, path.join(__dirname, 'handlebarsHelpers.js')),
+                helperDirs: [path.join(__dirname, 'handlebars_helpers')],
             },
         }
     ];
