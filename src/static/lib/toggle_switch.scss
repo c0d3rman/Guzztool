@@ -25,7 +25,7 @@
 
     // By adding this class, we can disable the animation for the toggle switch, for example to set initial state
     &:not(.toggle-switch-animation-off) {
-        label: {
+        label {
             transition: box-shadow var(--transition);
         }
 
