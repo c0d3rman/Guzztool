@@ -34,6 +34,10 @@ html {
         box-shadow: 0 0 10px inset;
         justify-content: center;
         user-select: none;
+
+        &:has(.toggle-switch input:checked) {
+            cursor: pointer;
+        }
     }
 
     &.subpage {
@@ -57,11 +61,15 @@ html {
         white-space: nowrap;
     }
 
-    &:has(input[type="checkbox"]:checked) {
-        cursor: pointer;
-    }
-
     /* START: The hover darkening effect */
+
+    .subpage-content {
+        color: var(--text-color);
+
+        // Prevent the hover overlay from ending up on top of the subpage contents
+        position: relative;
+        z-index: 2;
+    }
 
     .hover-overlay {
         position: absolute;
@@ -71,6 +79,7 @@ html {
         bottom: 0;
         background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.2));
         opacity: 0; // The hover overlay starts hidden
+        z-index: 1;
 
         &.hover-animation-active {
             // The transition for the hover overlay is only active when the .hover-animation-active class is present,

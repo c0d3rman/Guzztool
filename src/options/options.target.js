@@ -1,13 +1,13 @@
 import { browser } from '@guzztool/util/util.js';
+import log from '@guzztool/util/log.js';
 import stickerify from '@guzztool/util/stickerify.js';
-import gridTemplate from './grid.handlebars';
 import subpageTemplate from './subpage.handlebars';
 
 
 
 
 
-$(document).ready(function () {
+$(function () {
     // Set size of toggle switches based on their parent cells
     const stylesheet = Array.from(document.styleSheets)
         .find(sheet => sheet.ownerNode.id === "toggle_switch_css");
@@ -23,7 +23,7 @@ $(document).ready(function () {
         const fontSize = parseFloat(window.getComputedStyle(maxPercentWidthName, null).getPropertyValue('font-size'));
         $('.subtool-name').css('font-size', `${adjustmentFactor * fontSize}px`);
     }
-    $(window).resize(resize);
+    $(window).on('resize', resize);
     resize();
 
     // Set original state of switches based on settings
@@ -49,18 +49,11 @@ $(document).ready(function () {
     // Turn all subtool icons into stickers
     $('.cell .subtool-icon').each(function () { stickerify(this) });
 
-
-    /* Plan:
-    - When a cell is clicked, clone it into #app and place the clone on top of it with absolute positioning
-    - Give the clone the .subpage class with transitions to make it into a full-viewport thing
-    - Style the components inside to position and size themselves properly when children of a .subpage (this will potentially require an inner container for them)
-    - Add a sub-component with the handlebars subpage partial
-    - When the animation is done, hide the underlying grid (maybe unnecessary)
-    - On pressing back, show the grid, perform the animation in reverse (by removing .subpage), and then remove the clone
-    */
-
+    // Handle expanding a clicked cell into a subpage
     $('.cell').click(function (event) {
-        $('.cell').off('click'); // Stop responding to clicks on all cells
+        if ($('#app').find('.subpage').length > 0) return; // If a subpage is already open, don't open another
+
+        const cell = this;
 
         // These are all the properties that affect an element's sizing
         const sizeProperties = ["width", "height",
@@ -103,31 +96,53 @@ $(document).ready(function () {
 
         // Perform the animation to fullscreen the clone
         clone.addClass('subpage');
-        clone.find('.hover-overlay').animate({ opacity: 0 }, { duration: 1000, queue: false });
+        const animationDuration = parseInt(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
+        clone.find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false });
         setTimeout(() => {
-            // clone.find('.hover-overlay').css('opacity', '1');
-            console.log("Bing bong");
             clone.css({ top: '', left: '' }); // We need to unset these since they take priority over the class
-            const properties = {};
-            // Restore the element's original size-related CSS properties onto the clone, except any which were animated
-            clone.css(Object.assign({}, originalCSS, properties));
-        }, 1);
+            // Restore the element's original size-related CSS properties onto the clone
+            clone.css(Object.assign({}, originalCSS));
+        }, 1); // This needs to happen a bit after the class change, otherwise the CSS doesn't animate
 
-        // const animationDuration = parseInt(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
-        // const properties = Object.assign({}, originalCSS, {
-        //     width: '100%',
-        //     height: '100%',
-        //     aspectRatio: 'unset',
-        //     position: 'absolute',
-        //     top: 0,
-        //     left: 0,
-        // });
-        // clone.animate(properties, {
-        //     duration: animationDuration, queue: false, always: function () {
-        //         console.log("Done")
-        //     }
-        // });
+        browser.storage.sync.get('options', data => {
+            // Create the subpage
+            const subtoolId = $(this).data('subtool-id');
+            clone.append(subpageTemplate(SUBTOOLS[subtoolId]));
 
+            // Load current settings values
+            const currentSettings = data.options[subtoolId].subtool_settings;
+            Object.entries(currentSettings).forEach(([id, value]) => {
+                const input = clone.find(`input[name="${id}"]`);
+                if (input.attr('type') === 'checkbox') {
+                    input.prop('checked', value);
+                } else {
+                    input.val(value);
+                }
+            });
 
+            // Link input states to their corresponding settings
+            clone.find('input').change(function () {
+                browser.storage.sync.get('options', data => {
+                    const value = $(this).prop("type") === "checkbox" ? $(this).prop("checked") : $(this).val();
+                    data.options[subtoolId]['subtool_settings'][$(this).attr('name')] = value;
+                    browser.storage.sync.set({ options: data.options });
+                });
+            });
+
+            // Add a click handler for the back button
+            clone.find('.back-button').click(function () {
+                // Animate subpage close
+                clone.find(".subpage-content").fadeOut(animationDuration);
+                clone.css(Object.assign({
+                    'position': 'absolute',
+                    'top': $(cell).offset().top,
+                    'left': $(cell).offset().left,
+                }, sizeProperties.reduce((acc, cssProp) => {
+                    acc[cssProp] = $(cell).css(cssProp);
+                    return acc;
+                }, {})));
+                setTimeout(() => clone.remove(), animationDuration);
+            });
+        });
     }).on('click', '.toggle-switch', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell
 });

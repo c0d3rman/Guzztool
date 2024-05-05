@@ -1,6 +1,6 @@
-<div class="toggle-switch">
+<div class="toggle-switch" style="{{#if size}}--size: {{size}};{{/if}} {{#if style}}{{style}}{{/if}}">
   <label>
-    <input type="checkbox">
+    <input type="checkbox" {{#if input_name}} name="{{input_name}}" {{/if}}>
     <span class="toggle-switch-track">
       <span class="toggle-switch-text"></span>
     </span>

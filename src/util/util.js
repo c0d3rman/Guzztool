@@ -26,3 +26,21 @@ export async function sendMessageFromInjectedScript(id, message) {
     const extensionId = document.getElementById(id).getAttribute('data-ext-id');
     return await browser.runtime.sendMessage(extensionId, message);
 }
+
+/**
+ * Like Object.assign, but applies recursively.
+ * Adapted from https://stackoverflow.com/a/58089332/2674563
+ * @param {*} target - The target object to assign to.
+ * @param  {...any} sources - The source objects to assign from.
+ * @returns {Object} - The modified target object.
+ */
+export function nested_assign(target, ...sources) {
+    sources.forEach(source => {
+        Object.keys(source).forEach(key => {
+            target[key] = target[key] && source[key] && typeof target[key] === 'object' && typeof source[key] === 'object'
+                ? nested_assign(target[key], source[key])
+                : source[key]
+        })
+    })
+    return target
+}  
