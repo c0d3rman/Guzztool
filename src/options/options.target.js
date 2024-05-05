@@ -12,7 +12,7 @@ $(document).ready(function () {
     const stylesheet = Array.from(document.styleSheets)
         .find(sheet => sheet.ownerNode.id === "toggle_switch_css");
     const rule = Array.from(stylesheet.cssRules)
-        .find(cssRule => cssRule.selectorText === '.toggle');
+        .find(cssRule => cssRule.selectorText === '.toggle-switch');
     const resize = _ => {
         rule.style.setProperty("--size", $('.cell').width() / 10 + 'px');
 
@@ -28,15 +28,18 @@ $(document).ready(function () {
 
     // Set original state of switches based on settings
     browser.storage.sync.get('options', data => {
+        $('.toggle-switch').addClass('toggle-switch-animation-off');
         for (const subtoolId in data.options) {
             if (data.options[subtoolId].enabled) {
-                $(`.cell[data-subtool-id="${subtoolId}"] .toggle input`).prop('checked', true);
+                $(`.cell[data-subtool-id="${subtoolId}"] .toggle-switch input`).prop('checked', true);
             }
         }
+        // Wait a little so the animation doesn't trigger on setting initial state
+        setTimeout(() => $('.toggle-switch').removeClass('toggle-switch-animation-off'), 1);
     });
 
     // Listen for changes in the toggle switches and update the storage
-    $('.toggle input').change(function () {
+    $('.toggle-switch input').change(function () {
         browser.storage.sync.get('options', data => {
             data.options[$(this).closest('.cell').data('subtool-id')]['enabled'] = $(this).prop('checked');
             browser.storage.sync.set({ options: data.options });
@@ -126,5 +129,5 @@ $(document).ready(function () {
         // });
 
 
-    }).on('click', '.toggle', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell
+    }).on('click', '.toggle-switch', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell
 });
