@@ -52,6 +52,43 @@ const exportForTarget = BUILD_TARGET => {
         clean: true, // clears out the build folder before building
     };
 
+    const subtoolManifests = fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .reduce((acc, dirent) => {
+            acc[dirent.name] = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));;
+            return acc;
+        }, {});
+
+    const handlebarsPluginConfig = {
+        entry: path.join(__dirname, "src", "**", "*.target.handlebars"),
+        output: path.join(output.path, "[path]", "[name].html"),
+        getTargetFilepath: (filepath, outputTemplate, rootFolder) => {
+            filepath = filepath.replace(/\.target\.handlebars$/, '.handlebars');
+            return getTargetFilepath(filepath, outputTemplate, rootFolder);
+        },
+        getPartialId: (filePath) => {
+            // All partial IDs are their paths relative to src, without the file extension
+            // e.g. '{__dirname}/src/options/grid.handlebars' => 'options/grid'
+            const relative = path.parse(path.relative('src', filePath));
+            return path.join(relative.dir, relative.name);
+        },
+        partials: glob.sync(path.join(__dirname, "src", "**", "*.handlebars")).filter(f => !f.endsWith('.target.handlebars')),
+        helpers,
+        data: {
+            subtools: Object.entries(subtoolManifests)
+                .map(([id, manifest]) => {
+                    const subtool = Object.assign({}, manifest);
+                    subtool.id = id;
+                    subtool.iconPath = path.join("/subtools", id, manifest.icon);
+                    return subtool;
+                }),
+        },
+    };
+
+    // A map from partial IDs to partial paths, e.g. 'options/grid' => '{__dirname}/src/options/grid.handlebars'
+    // Used so handlebars-loader (which handles handlebars imports in JS files) can resolve partials using the same scheme as handlebars-webpack-plugin (which handles building handlebars files into HTML files)
+    const partialMap = Object.fromEntries(handlebarsPluginConfig.partials.map(partialPath => [handlebarsPluginConfig.getPartialId(partialPath), partialPath]));
+
     const moduleRules = [
         { // build source maps for JS files
             test: /\.js$/i,
@@ -75,6 +112,10 @@ const exportForTarget = BUILD_TARGET => {
         { // load Handlebars files
             test: /\.handlebars$/,
             loader: 'handlebars-loader',
+            options: {
+                partialResolver: (partial, callback) => callback(null, partialMap[partial]),
+                helperResolver: (helper, callback) => callback(null, path.join(__dirname, 'handlebarsHelpers.js')),
+            },
         }
     ];
 
@@ -82,14 +123,6 @@ const exportForTarget = BUILD_TARGET => {
         alias: { '@guzztool': path.join(__dirname, 'src') }, // You can use @guzztool as a root path in imports
         extensions: ['.js'], // If you don't give an extension in an import, webpack will look for a .js file
     };
-
-
-    const subtoolManifests = fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .reduce((acc, dirent) => {
-            acc[dirent.name] = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));;
-            return acc;
-        }, {});
 
     const isStaticFile = filepath => !(
         filepath == 'src/manifest.json' || // The manifest is not static
@@ -188,36 +221,11 @@ const exportForTarget = BUILD_TARGET => {
         })],
     };
 
-    let mostRecentTemplatePath = null;
-    const handlebarsConfig = {
-        entry: path.join(__dirname, "src", "**", "*.target.handlebars"),
-        output: path.join(output.path, "[path]", "[name].html"),
-        getTargetFilepath: (filepath, outputTemplate, rootFolder) => {
-            mostRecentTemplatePath = filepath; // onBeforeCompile is called next but not given the path, so we jank it
-            filepath = filepath.replace(/\.target\.handlebars$/, '.handlebars');
-            return getTargetFilepath(filepath, outputTemplate, rootFolder);
-        },
-        // Resolve all relative partial paths to package-absolute paths
-        onBeforeCompile: (_, templateContent) => templateContent.replace(/(?<={{>\s*)([^\s]+)(?=.*?}})/g, // This grabs just the relative path of the partial
-            (_, partialPath) => path.relative('src', path.join(path.dirname(mostRecentTemplatePath), partialPath))), // This combines the relative partial path with the path of the template it's in, and then resolves it relative to src, which is the partial root (for some reason)
-        partials: glob.sync(path.join(__dirname, "src", "**", "*.handlebars")).filter(f => !f.endsWith('.target.handlebars')),
-        helpers,
-        data: {
-            subtools: Object.entries(subtoolManifests)
-                .map(([id, manifest]) => {
-                    const subtool = Object.assign({}, manifest);
-                    subtool.id = id;
-                    subtool.iconPath = path.join("/subtools", id, manifest.icon);
-                    return subtool;
-                }),
-        },
-    };
-
     // These keywords will be replaced with the given strings in all JS files
     const webpackEnv = {
         BUILD_TARGET: `'${BUILD_TARGET}'`,
         __DEV__: `'${__DEV__}'`,
-        SUBTOOLS: JSON.stringify(handlebarsConfig.data.subtools.reduce((acc, subtool) => { // Convert the subtools list to a dictionary indexed by ID
+        SUBTOOLS: JSON.stringify(handlebarsPluginConfig.data.subtools.reduce((acc, subtool) => { // Convert the subtools list to a dictionary indexed by ID
             acc[subtool.id] = subtool;
             return acc;
         }, {})),
@@ -227,7 +235,7 @@ const exportForTarget = BUILD_TARGET => {
         new webpack.DefinePlugin(webpackEnv),
         new CopyPlugin({ patterns: copyPatterns }),
         new RemoveEmptyScriptsPlugin(),
-        new HandlebarsPlugin(handlebarsConfig),
+        new HandlebarsPlugin(handlebarsPluginConfig),
     ];
 
     // source maps for easier debugging of minified bundles
