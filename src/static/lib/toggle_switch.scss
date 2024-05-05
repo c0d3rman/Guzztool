@@ -3,12 +3,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@500&display=swap');
 
 
-.toggle {
+.toggle-switch {
     // Variables
     --size: 30px;
     --on-color: #2eddf3;
     --off-color: #68838d;
-    --transition: all 0.25s ease 0s width 0; // width 0 for responsivity
+    --transition-time: 0.25s;
+    --transition: var(--transition-time) ease 0s;
 
 
     position: relative;
@@ -20,11 +21,33 @@
 
     * {
         box-sizing: border-box;
-        transition: var(--transition);
     }
 
-    input {
-        display: none;
+    // By adding this class, we can disable the animation for the toggle switch, for example to set initial state
+    &:not(.toggle-switch-animation-off) {
+        label: {
+            transition: box-shadow var(--transition);
+        }
+
+        label::after {
+            transition: opacity var(--transition), width var(--transition);
+        }
+
+        .toggle-switch-track::before {
+            transition: left var(--transition);
+        }
+
+        .toggle-switch-thumbnail {
+            transition: left var(--transition), color var(--transition), background var(--transition), text-shadow var(--transition);
+        }
+
+        // *,
+        // .toggle-switch-track::before,
+        // label::after,
+        // .toggle-switch-text::before,
+        // .toggle-switch-text::after {
+        //     // transition: var(--transition);
+        // }
     }
 
     label {
@@ -36,6 +59,10 @@
         padding: calc(var(--size) / 5);
         box-shadow: 0 0 calc(var(--size) / 50) calc(var(--size) / 50) #0002;
 
+        input {
+            display: none;
+        }
+
         &::after {
             content: "";
             position: absolute;
@@ -45,8 +72,6 @@
             border-radius: var(--size);
             z-index: 0;
             opacity: 0;
-            transition: var(--transition);
-            animation: move-shadow 3s ease 0s 1;
         }
 
         &:has(input:checked) {
@@ -59,13 +84,26 @@
                 width: calc(100% - calc(calc(var(--size) / 5) * 4));
             }
 
-            .track::before {
+            .toggle-switch-track::before {
                 left: 0%;
+            }
+
+            .toggle-switch-thumbnail {
+                left: calc(calc(100% - calc(calc(var(--size) * 2) - calc(var(--size) / 3))) - calc(calc(var(--size) / 10) + calc(var(--size) / 15)));
+                color: var(--on-color);
+                background:
+                    radial-gradient(circle at 7% 50%, #fff calc(var(--size) / 50), #fff0 calc(var(--size) / 2)),
+                    radial-gradient(circle at 0 50%, var(--on-color) 10%, #fff0 60%),
+                    linear-gradient(180deg, #fff, #afafaf);
+                text-shadow:
+                    0 0 calc(var(--size) / 10) var(--on-color), 0 0 calc(var(--size) / 5) #fff,
+                    calc(var(--size) / -8000) calc(var(--size) / -150) calc(var(--size) / 50) #0008,
+                    calc(var(--size) / 150) calc(var(--size) / 100) calc(var(--size) / 50) #fff;
             }
         }
     }
 
-    .track {
+    .toggle-switch-track {
         position: absolute;
         width: calc(calc(var(--size) * 4) - calc(var(--size) / 2.5));
         height: calc(calc(var(--size) * 2) - calc(var(--size) / 2.5));
@@ -78,9 +116,7 @@
             width: calc(200% - calc(calc(var(--size) * 2) - calc(var(--size) / 3)));
             height: 100%;
             left: -50%;
-            transition: var(--transition);
             background: linear-gradient(90deg, var(--on-color) 50%, var(--off-color) 50%);
-            animation: move-color 3s ease 0s 1;
         }
 
         &::after {
@@ -93,7 +129,7 @@
         }
     }
 
-    .thumb {
+    .toggle-switch-thumbnail {
         position: absolute;
         width: calc(calc(var(--size) * 2) - calc(var(--size) / 3));
         height: calc(calc(var(--size) * 2) - calc(var(--size) / 3));
@@ -113,7 +149,6 @@
             calc(var(--size) / 150) calc(var(--size) / 100) calc(var(--size) / 50) #fff;
         color: #7d7c7c;
         z-index: 1;
-        animation: move-thumb 3s ease 0s 1;
         user-select: none;
 
         &::after {
@@ -132,35 +167,21 @@
             border: calc(var(--size) / 50) solid #ddd;
         }
     }
-}
 
-.toggle label:has(input:checked) .thumb {
-    left: calc(calc(100% - calc(calc(var(--size) * 2) - calc(var(--size) / 3))) - calc(calc(var(--size) / 10) + calc(var(--size) / 15)));
-    color: var(--on-color);
-    background:
-        radial-gradient(circle at 7% 50%, #fff calc(var(--size) / 50), #fff0 calc(var(--size) / 2)),
-        radial-gradient(circle at 0 50%, var(--on-color) 10%, #fff0 60%),
-        linear-gradient(180deg, #fff, #afafaf);
-    text-shadow:
-        0 0 calc(var(--size) / 10) var(--on-color), 0 0 calc(var(--size) / 5) #fff,
-        calc(var(--size) / -8000) calc(var(--size) / -150) calc(var(--size) / 50) #0008,
-        calc(var(--size) / 150) calc(var(--size) / 100) calc(var(--size) / 50) #fff;
-}
+    .toggle-switch-text::before,
+    .toggle-switch-text::after {
+        position: absolute;
+        left: calc(var(--size) / 2);
+        top: 25%;
+        content: "ON";
+        font-size: calc(var(--size) / 1.5);
+        color: #000;
+        opacity: 0.4;
+        text-shadow: 0px -1px 1px #000, 0px 1px 2px #fff;
+    }
 
-.txt::before,
-.txt::after {
-    position: absolute;
-    left: calc(var(--size) / 2);
-    top: 25%;
-    content: "ON";
-    transition: var(--transition);
-    font-size: calc(var(--size) / 1.5);
-    color: #000;
-    opacity: 0.4;
-    text-shadow: 0px -1px 1px #000, 0px 1px 2px #fff;
-}
-
-.txt::after {
-    content: "OFF";
-    left: calc(100% - calc(var(--size) / 0.625));
+    .toggle-switch-text::after {
+        content: "OFF";
+        left: calc(100% - calc(var(--size) / 0.625));
+    }
 }

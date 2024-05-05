@@ -2,18 +2,10 @@
   {{#each subtools}}
   <div class="cell" data-subtool-id="{{this.id}}"
     style="--subtool-color: {{this.color}}; --text-color: {{pickTextColorBasedOnBgColor this.color}};">
-    <div class="hover-overlay hover-animation-active"><img class="settings-icon" src="/options/cog.png"></div>
-    <img class="subtool-icon" src="{{this.iconPath}}">
-    <p class="subtool-name">{{this.name}}</p>
-    <div class="toggle">
-      <label>
-        <input type="checkbox">
-        <span class="track">
-          <span class="txt"></span>
-        </span>
-        <span class="thumb"></span>
-      </label>
+      <div class="hover-overlay hover-animation-active"><img class="settings-icon" src="/options/cog.png"></div>
+      <img class="subtool-icon" src="{{this.iconPath}}">
+      <p class="subtool-name">{{this.name}}</p>
+      {{> static/lib/toggle_switch}}
     </div>
+    {{/each}}
   </div>
-  {{/each}}
-</div>
