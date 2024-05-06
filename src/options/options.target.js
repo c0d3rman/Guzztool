@@ -75,13 +75,12 @@ $(function () {
     });
 
     // Listen for changes in the toggle switches and update the storage
-    const enableSwitchListener = function () {
+    $('.cell-content .toggle-switch input').change(function () {
         browser.storage.sync.get('options', data => {
             data.options[$(this).closest('.cell').data('subtool-id')]['enabled'] = $(this).prop('checked');
             browser.storage.sync.set({ options: data.options });
         });
-    };
-    $('.toggle-switch input').change(enableSwitchListener);
+    });
 
     // Turn all subtool icons into stickers
     $('.cell .subtool-icon').each(function () { stickerify(this) });
@@ -110,10 +109,7 @@ $(function () {
         const animationDuration = parseInt(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
         $(this).find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false });
         setTimeout(() => {
-            $(this).unnumericize().css({
-                'top': '',
-                'left': '',
-            });
+            $(this).unnumericize().css({ 'top': '', 'left': '' });
         }, 1); // This needs to happen a bit after the class change, otherwise the CSS doesn't animate
 
         browser.storage.sync.get('options', data => {
@@ -133,7 +129,7 @@ $(function () {
             });
 
             // Link input states to their corresponding settings
-            $(this).find('input').change(function () {
+            $(this).find('.subpage-content input').change(function () {
                 browser.storage.sync.get('options', data => {
                     const value = $(this).prop("type") === "checkbox" ? $(this).prop("checked") : $(this).val();
                     data.options[subtoolId]['subtool_settings'][$(this).attr('name')] = value;
@@ -141,7 +137,7 @@ $(function () {
                 });
             });
 
-            // Add a click handler for the back button
+            // Add a click handler for the back button that animates closing the subpage
             $(this).find('.back-button').click(() => {
                 // Animate subpage close
                 $(this).find(".subpage-content").fadeOut(animationDuration);
@@ -152,9 +148,11 @@ $(function () {
                     'top': placeholder.offset().top,
                     'left': placeholder.offset().left,
                 }, numericized));
+
+                // When the animation is done, replace the placeholder with the actual cell and clean up
                 setTimeout(() => {
                     $(this).removeClass('subpage').insertAfter(placeholder);
-                    $(this).find(".subpage-content").remove();
+                    $(this).find('.subpage-content').remove();
                     placeholder.remove();
                     $(this).find('.subtool-icon').unnumericize();
                     $(this).find('.settings-icon').unnumericize();

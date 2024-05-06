@@ -17,14 +17,16 @@ const subtool = {
 			};
 
 			// Hide elo tooltips
-			const battleScene = room.battle.scene;
-			for (const fn of ["updateLeftSidebar", "updateRightSidebar"]) {
-				const original = battleScene[fn];
-				battleScene[fn] = (...args) => {
-					const result = original.apply(battleScene, args);
-					$(room.$el).find(".trainersprite").attr("title", "Rating: [hidden by Pikachu's Elo Hider]");
-					return result;
-				};
+			if (this.options.hideTooltip) {
+				const battleScene = room.battle.scene;
+				for (const fn of ["updateLeftSidebar", "updateRightSidebar"]) {
+					const original = battleScene[fn];
+					battleScene[fn] = (...args) => {
+						const result = original.apply(battleScene, args);
+						$(room.$el).find(".trainersprite").attr("title", "Rating: [hidden by Pikachu's Elo Hider]");
+						return result;
+					};
+				}
 			}
 		});
 	}

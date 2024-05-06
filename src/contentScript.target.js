@@ -28,7 +28,7 @@ try {
 
             const subtool = require(`@guzztool/subtools/${manifest.id}/content.js`).default;
             subtool.manifest = manifest;
-            subtool.options = options[manifest.id];
+            subtool.options = options[manifest.id].subtool_settings;
             subtool.log = log.getLogger(manifest.id);
             subtool.messaging = messaging.getContext(manifest.id);
             return subtool;
