@@ -108,6 +108,7 @@ $(function () {
         $(this).removeClass("cell-shadow");
         const animationDuration = parseInt(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
         $(this).find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false });
+        $('html, body').animate({ scrollTop: 0 }, { duration: animationDuration, queue: false }).promise().done(() => $("#grid").hide()); // Scroll the page to the top, then hide the grid once the subpage is maximized
         setTimeout(() => {
             $(this).unnumericize().css({ 'top': '', 'left': '' });
         }, 1); // This needs to happen a bit after the class change, otherwise the CSS doesn't animate
@@ -142,12 +143,16 @@ $(function () {
                 // Animate subpage close
                 $(this).find(".subpage-content").fadeOut(animationDuration);
                 $(this).addClass("cell-shadow");
+                $("#grid").show(); // Unhide the grid (which at this point is still underneath the subpage)
+
                 const [numericized, original] = $(placeholder).numericize(null, false);
                 $(this).css(Object.assign({
                     'position': 'absolute',
                     'top': placeholder.offset().top,
                     'left': placeholder.offset().left,
                 }, numericized));
+                // Scroll so the shrunken cell is vertically centered
+                $('html, body').animate({ scrollTop: $(placeholder).offset().top - $(placeholder).height() / 2 }, { duration: animationDuration, queue: false });
 
                 // When the animation is done, replace the placeholder with the actual cell and clean up
                 setTimeout(() => {
