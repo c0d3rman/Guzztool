@@ -94,9 +94,9 @@ $(function () {
         $(this).find('.settings-icon').numericize().numericize(["top", "right"]); // Fix the size and position of the settings icon, since it growing rapidly looks weird
         $(this).find('.cell-content').numericize(["width", "height"]); // Keep the .cell-content the same size as any other cell
         $(this).numericize().css({
-            'position': 'absolute',
-            'top': $(this).offset().top,
-            'left': $(this).offset().left,
+            'position': 'fixed',
+            'top': $(this).offset().top - $(window).scrollTop(),
+            'left': $(this).offset().left - $(window).scrollLeft(),
         });
 
         // Move the cell out of the grid and replace with a placeholder
@@ -107,8 +107,8 @@ $(function () {
         $(this).addClass('subpage');
         $(this).removeClass("cell-shadow");
         const animationDuration = parseInt(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
-        $(this).find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false });
-        $('html, body').animate({ scrollTop: 0 }, { duration: animationDuration, queue: false }).promise().done(() => $("#grid").hide()); // Scroll the page to the top, then hide the grid once the subpage is maximized
+        $(this).find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false })
+            .promise().done(() => $("#grid").hide()); // Hide the grid at the end so scrolling turns off
         setTimeout(() => {
             $(this).unnumericize().css({ 'top': '', 'left': '' });
         }, 1); // This needs to happen a bit after the class change, otherwise the CSS doesn't animate
@@ -142,31 +142,34 @@ $(function () {
             $(this).find('.back-button').click(() => {
                 // Animate subpage close
                 $(this).find(".subpage-content").fadeOut(animationDuration);
-                $(this).addClass("cell-shadow");
+
                 $("#grid").show(); // Unhide the grid (which at this point is still underneath the subpage)
+                setTimeout(() => { // Wait a moment so the placeholder finds its position
+                    // Scroll so the shrunken cell is vertically centered
+                    $('html, body').scrollTop($(placeholder).offset().top - $(placeholder).height() / 2);
 
-                $(this).addClass("cell-shadow"); // Animate the box shadow back in
+                    // Animate the box shadow back in
+                    $(this).addClass("cell-shadow");
 
-                // Animate the cell back to its grid position (where the placeholder is)
-                const [numericized, original] = $(placeholder).numericize(null, false);
-                $(this).css(Object.assign({
-                    'position': 'absolute',
-                    'top': placeholder.offset().top,
-                    'left': placeholder.offset().left,
-                }, numericized));
-                // Scroll so the shrunken cell is vertically centered
-                $('html, body').animate({ scrollTop: $(placeholder).offset().top - $(placeholder).height() / 2 }, { duration: animationDuration, queue: false });
+                    // Animate the cell back to its grid position (where the placeholder is)
+                    const [numericized, original] = $(placeholder).numericize(null, false);
+                    $(this).css(Object.assign({
+                        'position': 'fixed',
+                        'top': placeholder.offset().top - $(window).scrollTop(),
+                        'left': placeholder.offset().left - $(window).scrollLeft(),
+                    }, numericized));
 
-                // When the animation is done, replace the placeholder with the actual cell and clean up
-                setTimeout(() => {
-                    $(this).removeClass('subpage').insertAfter(placeholder);
-                    $(this).find('.subpage-content').remove();
-                    placeholder.remove();
-                    $(this).find('.subtool-icon').unnumericize();
-                    $(this).find('.settings-icon').unnumericize();
-                    $(this).find('.cell-content').unnumericize();
-                    $(this).css(Object.assign({ position: '', top: '', left: '' }, original));
-                }, animationDuration);
+                    // When the animation is done, replace the placeholder with the actual cell and clean up
+                    setTimeout(() => {
+                        $(this).removeClass('subpage').insertAfter(placeholder);
+                        $(this).find('.subpage-content').remove();
+                        placeholder.remove();
+                        $(this).find('.subtool-icon').unnumericize();
+                        $(this).find('.settings-icon').unnumericize();
+                        $(this).find('.cell-content').unnumericize();
+                        $(this).css(Object.assign({ position: '', top: '', left: '' }, original));
+                    }, animationDuration);
+                }, 1);
             });
         });
     }).on('click', '.toggle-switch', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell
