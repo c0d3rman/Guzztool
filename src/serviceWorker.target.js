@@ -1,5 +1,6 @@
 import { browser, nested_assign } from '@guzztool/util/util';
 import { getStorageData, setStorageData } from '@guzztool/util/storage';
+import Messaging from '@guzztool/util/messaging';
 import log from '@guzztool/util/log';
 
 
@@ -30,42 +31,30 @@ browser.runtime.onInstalled.addListener(async () => {
 });
 
 // Create an offscreen document - an invisible page that gives us access to a DOMParser.
-if (BUILD_TARGET == 'chrome') {
-    await browser.offscreen?.createDocument({
-        url: '/offscreen.html',
-        reasons: [browser.offscreen.Reason.DOM_PARSER],
-        justification: 'Parse DOM'
-    }).then(() => { log.info("Created offscreen document."); });
-} else if (BUILD_TARGET == 'firefox') {
-    // TBD access DOMParser directly
-}
+// if (BUILD_TARGET == 'chrome') {
+//     await browser.offscreen?.createDocument({
+//         url: '/offscreen.html',
+//         reasons: [browser.offscreen.Reason.DOM_PARSER],
+//         justification: 'Parse DOM'
+//     }).then(() => { log.info("Created offscreen document."); });
+// } else if (BUILD_TARGET == 'firefox') {
+//     // TBD access DOMParser directly
+// }
 
+const messaging = new Messaging('background');
 
-// Listen for messages from other parts of the extension.
-const handleMessage = async (request, sender, sendResponse) => {
-    if (request.target != 'service-worker') return false;
-
-    log.info("Received message:", request);
-    sendResponse = (...args) => {
-        log.info("Sending response:", ...args);
-        sendResponse(...args);
+// Fetch a page for someone, which lets us bypass CORS issues.
+// Requires the correct "host_permissions" in manifest.json
+messaging.onMessage("fetch", async (message) => {
+    const response = await fetch(message.content.url);
+    let result;
+    switch (message.content.mode) {
+        case 'json':
+            result = await response.json();
+            break;
+        case 'text':
+        default:
+            result = await response.text();
     }
-
-    // Fetch a page for someone, which lets us bypass CORS issues.
-    // Requires the correct "host_permissions" in manifest.json
-    if (request.type === 'fetch') {
-        const response = await fetch(request.data.url);
-        let result;
-        switch (request.data.mode) {
-            case 'json':
-                result = await response.json();
-                break;
-            case 'text':
-            default:
-                result = await response.text();
-        }
-        sendResponse({ fetched: result });
-    }
-}
-browser.runtime.onMessage.addListener(handleMessage);
-browser.runtime.onMessageExternal.addListener(handleMessage);
+    messaging.postMessage({ replyTo: message, content: { result } });
+});

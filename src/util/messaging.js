@@ -1,15 +1,61 @@
 /*
 Guzztool's messaging utility.
-Used for sending messages between the different parts of the extension (injected script, content script, background script).
+Used for sending messages between the different parts of the extension (injected-script, content-script, background).
 Use as follows:
 ```
-import Messaging from '@guzztool/util/messaging.js';
+import Messaging from '@guzztool/util/messaging';
 const messaging = new Messaging('<source>');
 const subtoolSpecific = new Messaging('<source>', '<subtool-id>');
 ```
+Note that for messages to go between the injected-script and background,
+a Messaging object must be created in the content-script to mediate.
+
+KNOWN LIMITATION: since the content-script injects the injected-script,
+injected-script's messaging often won't be ready to listen to messages from the content-script.
+This can be worked around by sending a "ready" message from the injected-script on initialization
+and listening for it in the content-script.
 */
 
-import log from '@guzztool/util/log.js';
+import log from '@guzztool/util/log';
+import { browser } from '@guzztool/util/util';
+
+
+export class WindowMessagingChannel {
+    postMessage(message) {
+        window.postMessage(message);
+    }
+
+    addListener(listener) {
+        window.addEventListener("message", listener);
+        return listener;
+    }
+
+    removeListener(listener) {
+        window.removeEventListener("message", listener);
+    }
+}
+
+export class BrowserMessagingChannel {
+    constructor() {
+        this.listeners = {};
+    }
+
+    postMessage(message) {
+        browser.runtime.sendMessage(message);
+    }
+
+    addListener(listener) {
+        const wrapper = (request, sender, sendResponse) => listener({ data: request });
+        browser.runtime.onMessage.addListener(wrapper);
+        this.listeners[listener] = wrapper;
+        return listener;
+    }
+
+    removeListener(listener) {
+        browser.runtime.onMessage.removeListener(this.listeners[listener]);
+        delete this.listeners[listener];
+    }
+}
 
 
 class Messaging {
@@ -24,6 +70,29 @@ class Messaging {
     constructor(source, context = null) {
         this.source = source;
         this.context = context;
+
+        if (source === "injected-script") {
+            // Injected script can only access the window channel
+            const windowChannel = new WindowMessagingChannel();
+            this.messagingChannels = Object.fromEntries(Messaging.TARGETS.map(target => [target, windowChannel]));
+        } else if (source === "content-script") {
+            // Content script can access both the window and browser channels (and prefers window when messaging itself)
+            const windowChannel = new WindowMessagingChannel();
+            const browserChannel = new BrowserMessagingChannel();
+            this.messagingChannels = {
+                "injected-script": windowChannel,
+                "content-script": windowChannel,
+                "background": browserChannel,
+            };
+            // Set up bridge to mediate between window and browser channels
+            this._bridge();
+        } else if (source === "background") {
+            // Background script can only access the browser channel
+            const browserChannel = new BrowserMessagingChannel();
+            this.messagingChannels = Object.fromEntries(Messaging.TARGETS.map(target => [target, browserChannel]));
+        } else {
+            throw new Error(`Invalid source: ${source}`);
+        }
     }
 
     /**
@@ -81,8 +150,9 @@ class Messaging {
             replyTo,
         };
         const prefixed_message = Messaging._addPrefix(message); // When going over the wire, all fields are prefixed to avoid conflicts with other message senders
-        log.debug(`Posting ${message.replyTo? "reply" : "message"}`, prefixed_message);
-        window.postMessage(prefixed_message);
+        const channels = [...new Set(target.map(t => this.messagingChannels[t]))];
+        log.debug(`Posting ${message.replyTo ? "reply" : "message"} via [${channels.map(c => c.constructor.name).join(", ")}]`, prefixed_message);
+        channels.forEach(channel => channel.postMessage(prefixed_message));
 
         // Listen for reply and return a promise if awaitReply is true
         if (awaitReply) {
@@ -93,14 +163,14 @@ class Messaging {
                     if (data &&
                         data.replyTo === message.id) {
                         log.debug("Received reply:", event.data);
-                        window.removeEventListener("message", listener);
+                        [...new Set(Object.values(this.messagingChannels))].forEach(channel => channel.removeListener(listener));
                         clearTimeout(timeoutId);
                         resolve(data);
                     }
                 };
-                window.addEventListener("message", listener);
+                [...new Set(Object.values(this.messagingChannels))].forEach(channel => channel.addListener(listener));
                 timeoutId = setTimeout(() => {
-                    window.removeEventListener("message", listener);
+                    [...new Set(Object.values(this.messagingChannels))].forEach(channel => channel.removeListener(listener));
                     const error = new Error(`Timed out while waiting for reply to message: ${JSON.stringify(message)}`);
                     reject(error);
                 }, awaitReplyTimeout);
@@ -120,6 +190,7 @@ class Messaging {
 
         const listener = (event) => {
             const data = Messaging._removePrefix(event.data);
+            // log.debug(`__Got a message (I'm ${this.source}):`, data);
             if (data &&
                 (!type || type.includes(data.type)) &&
                 data.target.includes(this.source) &&
@@ -129,8 +200,27 @@ class Messaging {
                 callback(data);
             }
         };
-        window.addEventListener("message", listener);
+        [...new Set(Object.values(this.messagingChannels))].forEach(channel => channel.addListener(listener));
         return listener;
+    }
+
+    /**
+     * Set up forwarding between the window and browser channels.
+     * Should only be called by the content script, since it has access to both.
+     */
+    _bridge() {
+        const listener = (event) => {
+            const data = Messaging._removePrefix(event.data);
+            if (!data) return;
+            if (data.source === "injected-script" && data.target.includes("background")) {
+                log.debug("Forwarding message from injected-script to background", data);
+                this.messagingChannels["background"].postMessage(data);
+            } else if (data.source === "background" && data.target.includes("injected-script")) {
+                log.debug("Forwarding message from background to injected-script", data);
+                this.messagingChannels["injected-script"].postMessage(data);
+            }
+        };
+        [...new Set(Object.values(this.messagingChannels))].forEach(channel => channel.addListener(listener));
     }
 
     /**

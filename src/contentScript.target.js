@@ -1,9 +1,9 @@
 /* This is the content script that will be injected into the page.
 Its main role is to create a <script> element in the page that will load injectedScript.js, so that it can access page variables. */
 
-import { browser } from '@guzztool/util/util.js';
-import log from '@guzztool/util/log.js';
-import Messaging from '@guzztool/util/messaging.js';
+import { browser } from '@guzztool/util/util';
+import log from '@guzztool/util/log';
+import Messaging from '@guzztool/util/messaging';
 
 // Polyfill
 if (!globalThis.URLPattern) require("urlpattern-polyfill");

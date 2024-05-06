@@ -12,7 +12,7 @@ try {
     const messaging = new Messaging('injected-script');
 
     // Dynamically import all subtools
-    const options = (await messaging.postMessage({ type: "getOptions", context: null, awaitReply: true })).content;
+    const options = (await messaging.postMessage({ type: "getOptions", target: ["content-script"], awaitReply: true })).content;
     const subtools = Object.values(SUBTOOLS).map((manifest) => {
         try { // Inner guard so one subtool crashing doesn't affect the others
             if (manifest.id === "_guzztool") return;
