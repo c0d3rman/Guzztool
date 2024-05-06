@@ -145,6 +145,9 @@ $(function () {
                 $(this).addClass("cell-shadow");
                 $("#grid").show(); // Unhide the grid (which at this point is still underneath the subpage)
 
+                $(this).addClass("cell-shadow"); // Animate the box shadow back in
+
+                // Animate the cell back to its grid position (where the placeholder is)
                 const [numericized, original] = $(placeholder).numericize(null, false);
                 $(this).css(Object.assign({
                     'position': 'absolute',
