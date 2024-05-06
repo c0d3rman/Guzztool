@@ -16,6 +16,7 @@ import HandlebarsPlugin from 'handlebars-webpack-plugin';
 import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath.js';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
+import WebpackAddonLinterPlugin from './WebpackAddonLinterPlugin.mjs';
 import SUBTOOL_ORDER from './src/subtools/subtool_order.json' with { type: "json" };
 
 
@@ -145,7 +146,8 @@ const exportForTarget = BUILD_TARGET => {
         filepath == 'src/manifest.json' || // The manifest is not static
         (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath)) || // JS files are not static unless they're in a lib/ folder
         filepath.endsWith('.handlebars') || // Handlebars templates are not static
-        Object.values(entry).flat().some(e => path.relative(e, filepath) == '') // Any file which is an entry point is not static (since it gets built)
+        Object.values(entry).flat().some(e => path.relative(e, filepath) == '') || // Any file which is an entry point is not static (since it gets built)
+        path.basename(filepath) == '.DS_Store' // .DS_Store files are not static
     );
     const copyPatterns = [
         // Copy all static files
@@ -252,6 +254,9 @@ const exportForTarget = BUILD_TARGET => {
         new RemoveEmptyScriptsPlugin(),
         new HandlebarsPlugin(handlebarsPluginConfig),
     ];
+    if (BUILD_TARGET == 'firefox') {
+        plugins.push(new WebpackAddonLinterPlugin({ path: output.path }));
+    }
 
     // source maps for easier debugging of minified bundles
     // (values are based off of webpack's recommendations depending on the environment,
