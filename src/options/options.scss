@@ -132,3 +132,53 @@ html {
 
     /* END: The hover darkening effect */
 }
+
+// The first time installation modal
+.first-time-install-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 4vh;
+
+    .first-time-install-modal {
+        max-width: 80%;
+        background-color: #494949;
+        color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-sizing: border-box;
+        position: relative;
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            align-self: center;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font: 6vh/1.5 "Roboto Condensed", sans-serif;
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 8vh;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        ol {
+            padding-inline-start: 6vh;
+        }
+    }
+}

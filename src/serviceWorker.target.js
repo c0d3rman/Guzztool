@@ -3,8 +3,8 @@ import { getStorageData, setStorageData } from '@guzztool/util/storage';
 import log from '@guzztool/util/log';
 
 
-// Initialize storage on installation.
 browser.runtime.onInstalled.addListener(async () => {
+    // Initialize storage on installation.
     const currentStorageData = await getStorageData();
 
     if (!currentStorageData.options) currentStorageData.options = {};
@@ -19,8 +19,14 @@ browser.runtime.onInstalled.addListener(async () => {
         return d;
     }, {}), currentStorageData.options);
 
+    // Set a first-time install flag so the options page knows to display the intro modal.
+    currentStorageData.firstTimeInstall = true;
+
     await setStorageData(currentStorageData);
     log.info("Initialized default settings.");
+
+    // Open the options page to let user turn on the subtools they want.
+    await browser.runtime.openOptionsPage();
 });
 
 // Create an offscreen document - an invisible page that gives us access to a DOMParser.

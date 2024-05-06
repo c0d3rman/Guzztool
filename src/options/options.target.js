@@ -1,10 +1,7 @@
 import { browser } from '@guzztool/util/util';
-import log from '@guzztool/util/log';
 import stickerify from '@guzztool/util/stickerify';
 import subpageTemplate from './subpage.handlebars';
-
-
-
+import firstTimeModalTemplate from './firstTimeModal.handlebars';
 
 
 $(function () {
@@ -167,4 +164,18 @@ $(function () {
             });
         });
     }).on('click', '.toggle-switch', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell
+
+    // First-time install modal
+    browser.storage.sync.get('firstTimeInstall', data => {
+        if (data.firstTimeInstall) {
+            const modalOverlay = $(firstTimeModalTemplate()).appendTo('body');
+            const fadeTimeMs = 300;
+            modalOverlay.find("button").click(() => modalOverlay.fadeOut(fadeTimeMs, () => modalOverlay.remove()));
+            modalOverlay.click(() => {
+                modalOverlay.fadeOut(fadeTimeMs, () => modalOverlay.remove());
+            }).on('click', '.first-time-install-modal', (e) => e.stopPropagation());
+
+            browser.storage.sync.set({ firstTimeInstall: false });
+        }
+    });
 });
