@@ -1,7 +1,7 @@
 import { browser, nested_assign } from '@guzztool/util/util';
 import { getStorageData, setStorageData } from '@guzztool/util/storage';
 import Messaging from '@guzztool/util/messaging';
-import log from '@guzztool/util/log';
+import log, { setLogLevel } from '@guzztool/util/log';
 
 
 browser.runtime.onInstalled.addListener(async () => {
@@ -57,4 +57,14 @@ messaging.onMessage("fetch", async (message) => {
             result = await response.text();
     }
     messaging.postMessage({ replyTo: message, content: { result } });
+});
+
+
+// Debug mode
+browser.storage.sync.onChanged.addListener((changes) => {
+    if (changes.options &&
+        changes.options.newValue._guzztool.subtool_settings.debug != changes.options.oldValue._guzztool.subtool_settings.debug) {
+        log.info(`Debug mode ${changes.options.newValue._guzztool.subtool_settings.debug ? 'enabled' : 'disabled'}`);
+        setLogLevel(changes.options.newValue._guzztool.subtool_settings.debug || __DEV__);
+    }
 });

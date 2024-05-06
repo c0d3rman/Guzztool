@@ -71,10 +71,10 @@ const exportForTarget = BUILD_TARGET => {
         matches: [],
         settings: [
             {
-                "id": "test",
+                "id": "debug",
                 "type": "boolean",
-                "title": "Test setting",
-                "default": true
+                "title": "Enable debug mode.",
+                "default": false
             },
         ],
     };

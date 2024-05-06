@@ -25,6 +25,9 @@ prefix.apply(log, {
 });
 
 // Set log level based on development/production
-__DEV__ ? log.enableAll() : log.setLevel('info');
+export function setLogLevel(dev) {
+    dev ? log.enableAll() : log.setLevel('info');
+}
+setLogLevel(__DEV__);
 
 export default log;
