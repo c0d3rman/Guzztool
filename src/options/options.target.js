@@ -105,7 +105,6 @@ $(function () {
 
         // Perform the animation to fullscreen the cell
         $(this).addClass('subpage');
-        $(this).removeClass("cell-shadow");
         const animationDuration = parseInt(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
         $(this).find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false })
             .promise().done(() => $("#grid").hide()); // Hide the grid at the end so scrolling turns off
@@ -147,9 +146,6 @@ $(function () {
                 setTimeout(() => { // Wait a moment so the placeholder finds its position
                     // Scroll so the shrunken cell is vertically centered
                     $('html, body').scrollTop($(placeholder).offset().top - $(placeholder).height() / 2);
-
-                    // Animate the box shadow back in
-                    $(this).addClass("cell-shadow");
 
                     // Animate the cell back to its grid position (where the placeholder is)
                     const [numericized, original] = $(placeholder).numericize(null, false);

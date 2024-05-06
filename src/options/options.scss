@@ -22,12 +22,9 @@ html {
     padding: 5%;
     margin: 0;
     border: 1px solid black;
+    box-shadow: 0 0 10px inset;
     background-color: var(--subtool-color);
     transition: all var(--subpage-animation-duration);
-
-    &.cell-shadow {
-        box-shadow: 0 0 10px inset;
-    }
 
     .cell-content {
         position: relative;

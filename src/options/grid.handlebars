@@ -1,7 +1,7 @@
 <div id="grid">
   {{#each subtool_order as |subtool_id|}}
   {{#with (lookup ../subtools subtool_id)}}
-  <div class="cell cell-shadow" data-subtool-id="{{this.id}}"
+  <div class="cell" data-subtool-id="{{this.id}}"
     style="--subtool-color: {{this.color}}; --text-color: {{pickTextColorBasedOnBgColor this.color}};">
     <div class="hover-overlay hover-animation-active"><img class="settings-icon" src="/options/cog.png"></div>
     <div class="cell-content">
