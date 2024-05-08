@@ -1,18 +1,18 @@
 /* This script is injected into the page by contentScript.js and can access page variables. */
 
-import { RoomListener } from '@guzztool/util/RoomListener.js';
-import log from '@guzztool/util/log.js';
-import Messaging from '@guzztool/util/messaging.js';
+import { RoomListener } from '@guzztool/util/RoomListener';
+import log from '@guzztool/util/log';
+import * as messaging from "webext-bridge/window";
 
 // Polyfill
 if (!globalThis.URLPattern) require("urlpattern-polyfill");
 
 
 try {
-    const messaging = new Messaging('injected-script');
+    messaging.setNamespace("guzztool");
 
     // Dynamically import all subtools
-    const options = (await messaging.postMessage({ type: "getOptions", target: ["content-script"], awaitReply: true })).content;
+    const options = await messaging.sendMessage("getOptions", {}, "content-script");
     const subtools = Object.values(SUBTOOLS).map((manifest) => {
         try { // Inner guard so one subtool crashing doesn't affect the others
             if (manifest.id === "_guzztool") return;
@@ -23,7 +23,7 @@ try {
             subtool.manifest = manifest;
             subtool.options = options[manifest.id].subtool_settings;
             subtool.log = log.getLogger(manifest.id);
-            subtool.messaging = messaging.getContext(manifest.id);
+            subtool.messaging = messaging;
             return subtool;
         } catch (e) {
             if (e.code === 'MODULE_NOT_FOUND') return; // Subtool doesn't have an inject.js

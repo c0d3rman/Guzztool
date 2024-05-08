@@ -22,11 +22,6 @@ export function weighted_random(choiceDict) {
     return choices[i];
 }
 
-export async function sendMessageFromInjectedScript(id, message) {
-    const extensionId = document.getElementById(id).getAttribute('data-ext-id');
-    return await browser.runtime.sendMessage(extensionId, message);
-}
-
 /**
  * Like Object.assign, but applies recursively.
  * Adapted from https://stackoverflow.com/a/58089332/2674563
@@ -43,4 +38,4 @@ export function nested_assign(target, ...sources) {
         })
     })
     return target
-}  
+}

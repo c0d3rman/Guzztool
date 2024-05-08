@@ -3,21 +3,19 @@ Its main role is to create a <script> element in the page that will load injecte
 
 import { browser } from '@guzztool/util/util';
 import log from '@guzztool/util/log';
-import Messaging from '@guzztool/util/messaging';
+import * as messaging from "webext-bridge/content-script";
 
 // Polyfill
 if (!globalThis.URLPattern) require("urlpattern-polyfill");
 
 
 try {
-    const messaging = new Messaging('content-script');
+    messaging.allowWindowMessaging("guzztool");
 
     // Fetch options and pass them to the injected script
     const options = (await browser.storage.sync.get('options')).options;
     log.debug("Options:", options);
-    messaging.onMessage("getOptions", async (message) => {
-        messaging.postMessage({ replyTo: message, content: options });
-    });
+    messaging.onMessage("getOptions", async (message) => options);
 
     // Dynamically import all subtools
     const subtools = Object.values(SUBTOOLS).map((manifest) => {
@@ -30,7 +28,7 @@ try {
             subtool.manifest = manifest;
             subtool.options = options[manifest.id].subtool_settings;
             subtool.log = log.getLogger(manifest.id);
-            subtool.messaging = messaging.getContext(manifest.id);
+            subtool.messaging = messaging;
             return subtool;
         } catch (e) {
             if (e.code === 'MODULE_NOT_FOUND') return; // Subtool doesn't have a content.js
