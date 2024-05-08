@@ -1,9 +1,3 @@
-// Polyfill to make things work on both Chrome and Firefox
-export let browser;
-try { // When importing other things from util.js in an injected script, these being undefined causes an error, so guard
-    browser = chrome || browser;
-} catch { }
-
 // Adapted from https://stackoverflow.com/a/55671924/2674563
 export function weighted_random(choiceDict) {
     let i;

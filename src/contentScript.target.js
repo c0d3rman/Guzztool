@@ -1,8 +1,8 @@
 /* This is the content script that will be injected into the page.
 Its main role is to create a <script> element in the page that will load injectedScript.js, so that it can access page variables. */
 
-import { browser } from '@guzztool/util/util';
 import log from '@guzztool/util/log';
+import browser from 'webextension-polyfill';
 import * as messaging from "webext-bridge/content-script";
 
 // Polyfill

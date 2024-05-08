@@ -1,6 +1,7 @@
-import { browser, nested_assign } from '@guzztool/util/util';
+import { nested_assign } from '@guzztool/util/util';
 import { getStorageData, setStorageData } from '@guzztool/util/storage';
 import log, { setLogLevel } from '@guzztool/util/log';
+import browser from 'webextension-polyfill';
 import * as messaging from "webext-bridge/background";
 
 

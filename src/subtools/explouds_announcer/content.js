@@ -2,7 +2,7 @@
  This content script handles playing sounds when requested by the injected script
  */
 
-import { browser } from '@guzztool/util/util.js';
+import browser from 'webextension-polyfill';
 
 
 const subtool = {

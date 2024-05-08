@@ -1,5 +1,5 @@
-import { browser } from '@guzztool/util/util';
 import stickerify from '@guzztool/util/stickerify';
+import browser from 'webextension-polyfill';
 import subpageTemplate from './subpage.handlebars';
 import firstTimeModalTemplate from './firstTimeModal.handlebars';
 
@@ -63,7 +63,7 @@ $(function () {
     resize();
 
     // Set original state of switches based on settings
-    browser.storage.sync.get('options', data => {
+    browser.storage.sync.get('options').then(data => {
         $('.toggle-switch').addClass('toggle-switch-animation-off');
         for (const subtoolId in data.options) {
             if (data.options[subtoolId].enabled) {
@@ -76,7 +76,7 @@ $(function () {
 
     // Listen for changes in the toggle switches and update the storage
     $('.cell-content .toggle-switch input').change(function () {
-        browser.storage.sync.get('options', data => {
+        browser.storage.sync.get('options').then(data => {
             data.options[$(this).closest('.cell').data('subtool-id')]['enabled'] = $(this).prop('checked');
             browser.storage.sync.set({ options: data.options });
         });
@@ -112,7 +112,7 @@ $(function () {
             $(this).unnumericize().css({ 'top': '', 'left': '' });
         }, 1); // This needs to happen a bit after the class change, otherwise the CSS doesn't animate
 
-        browser.storage.sync.get('options', data => {
+        browser.storage.sync.get('options').then(data => {
             // Create the subpage
             const subtoolId = $(this).data('subtool-id');
             $(this).append(subpageTemplate(SUBTOOLS[subtoolId]));
@@ -130,7 +130,7 @@ $(function () {
 
             // Link input states to their corresponding settings
             $(this).find('.subpage-content input').change(function () {
-                browser.storage.sync.get('options', data => {
+                browser.storage.sync.get('options').then(data => {
                     const value = $(this).prop("type") === "checkbox" ? $(this).prop("checked") : $(this).val();
                     data.options[subtoolId]['subtool_settings'][$(this).attr('name')] = value;
                     browser.storage.sync.set({ options: data.options });
@@ -171,7 +171,7 @@ $(function () {
     }).on('click', '.toggle-switch', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell
 
     // First-time install modal
-    browser.storage.sync.get('firstTimeInstall', data => {
+    browser.storage.sync.get('firstTimeInstall').then(data => {
         if (data.firstTimeInstall) {
             const modalOverlay = $(firstTimeModalTemplate()).appendTo('body');
             const fadeTimeMs = 300;
