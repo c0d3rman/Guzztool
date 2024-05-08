@@ -1,3 +1,6 @@
+import timerCSSTemplate from './timerCSS.handlebars';
+
+
 const subtool = {
     init: function () {
         if (!this.roomListener) return;
@@ -40,12 +43,7 @@ function getBattleControlsState(room) {
 function modifyRoom(room) {
     // Create a style tag for hiding and showing the real timer button
     const roomId = room.$el.attr('id');
-    document.head.insertAdjacentHTML('beforeend', `<style id="guzztool-zorua-${roomId}">
-#${roomId} .timerbutton:not(:hover) {} /* dynamically edited */
-#${roomId} .timerbutton { width: 70px; }
-#${roomId} .guzztool-zorua-fake-timerbutton { float: right; text-decoration: line-through; width: 70px; }
-#${roomId} .guzztool-zorua-fake-timerbutton:not(:hover) { filter: brightness(0); }
-</style>`);
+    $(timerCSSTemplate({ roomId })).appendTo('head');
     const timerHidingCSSRule = Array.from(document.styleSheets).find(sheet => sheet.ownerNode.id === `guzztool-zorua-${roomId}`).cssRules[0];
 
     let turn0Ended = false; // A flag to track whether we've finished all animations pre turn 1
