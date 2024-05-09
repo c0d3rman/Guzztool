@@ -4,12 +4,14 @@
   <div class="cell" data-subtool-id="{{this.id}}"
     style="--subtool-color: {{this.color}}; --text-color: {{pickTextColorBasedOnBgColor this.color}};">
     <div class="hover-overlay hover-animation-active"><img class="settings-icon" src="/options/cog.png"></div>
-    <div class="cell-content">
-      <img class="subtool-icon" src="{{this.iconPath}}">
-      <p class="subtool-name">{{this.name}}</p>
-      {{#if (ne this.id "_guzztool")}}
-      {{> static/lib/toggle_switch}}
-      {{/if}}
+    <div class="cell-inner">
+      <div class="cell-content">
+        <img class="subtool-icon" src="{{this.iconPath}}">
+        <p class="subtool-name">{{this.name}}</p>
+        {{#if (ne this.id "_guzztool")}}
+        {{> static/lib/toggle_switch}}
+        {{/if}}
+      </div>
     </div>
   </div>
   {{/with}}
