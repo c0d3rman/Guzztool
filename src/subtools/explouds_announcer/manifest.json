@@ -3,5 +3,8 @@
 	"description": "Adds the Pokemon Stadium 2 announcer to battles.",
 	"icon": "icon.png",
 	"color": "#70335c",
-	"matches": ["*://play.pokemonshowdown.com/*", "*://*.psim.us/*"]
+	"matches": [
+		"*://play.pokemonshowdown.com/*",
+		"*://*.psim.us/*"
+	]
 }

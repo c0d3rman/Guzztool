@@ -76,9 +76,9 @@ const subtool = {
 		this.soundManager.init();
 
 		// Setup listeners to receive messages from the injected script
-		this.messaging.onMessage("play_sound", message => this.soundManager.play(message.content.soundName, message.content.soundType));
-		this.messaging.onMessage("set_mute", message => this.soundManager.audio.muted = message.content.muted);
-		this.messaging.onMessage("get_asset_map", message => this.messaging.postMessage({ replyTo: message, content: assetMap }));
+		this.messaging.onMessage("play_sound", message => this.soundManager.play(message.data.soundName, message.data.soundType));
+		this.messaging.onMessage("set_mute", message => this.soundManager.audio.muted = message.data.muted);
+		this.messaging.onMessage("get_asset_map", message => assetMap);
 	}
 }
 
