@@ -162,6 +162,7 @@ $(function () {
                         $(this).find('.subtool-icon').unnumericize();
                         $(this).find('.settings-icon').unnumericize();
                         $(this).find('.cell-content').unnumericize();
+                        $(this).find('.hover-overlay').css('opacity', '');
                         $(this).css(Object.assign({ position: '', top: '', left: '' }, original));
                     }, animationDuration);
                 }, 1);
