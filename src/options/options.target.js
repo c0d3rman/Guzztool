@@ -63,15 +63,17 @@ $(function () {
     resize();
 
     // Set original state of switches based on settings
-    browser.storage.sync.get('options').then(data => {
+    browser.storage.sync.get('options').then(async data => {
         $('.toggle-switch').addClass('toggle-switch-animation-off');
+
         for (const subtoolId in data.options) {
             if (data.options[subtoolId].enabled) {
                 $(`.cell[data-subtool-id="${subtoolId}"] .toggle-switch input`).prop('checked', true);
             }
         }
-        // Wait a little so the animation doesn't trigger on setting initial state
-        setTimeout(() => $('.toggle-switch').removeClass('toggle-switch-animation-off'), 1);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait a little so animation works right
+
+        $('.toggle-switch').removeClass('toggle-switch-animation-off');
     });
 
     // Listen for changes in the toggle switches and update the storage
