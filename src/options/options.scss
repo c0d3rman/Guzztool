@@ -17,6 +17,10 @@ html {
     width: 100%;
 }
 
+.toggle-switch {
+    vertical-align: middle; // Makes switches vertically align with lines of text instead of sitting on the text baseline
+}
+
 .cell {
     box-sizing: border-box;
     padding: 5%;
@@ -90,6 +94,10 @@ html {
         text-align: center;
         white-space: nowrap;
         width: fit-content;
+    }
+
+    .back-button {
+        font: 2em "Roboto Condensed", sans-serif;
     }
 
     /* START: The hover darkening effect */
