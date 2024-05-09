@@ -117,7 +117,7 @@ $(function () {
         browser.storage.sync.get('options').then(data => {
             // Create the subpage
             const subtoolId = $(this).data('subtool-id');
-            $(this).append(subpageTemplate(SUBTOOLS[subtoolId]));
+            $(this).find(".cell-inner").append(subpageTemplate(SUBTOOLS[subtoolId]));
 
             // Load current settings values
             const currentSettings = data.options[subtoolId].subtool_settings;
@@ -141,9 +141,6 @@ $(function () {
 
             // Add a click handler for the back button that animates closing the subpage
             $(this).find('.back-button').click(() => {
-                // Animate subpage close
-                $(this).find(".subpage-content").fadeOut(animationDuration);
-
                 $("#grid").show(); // Unhide the grid (which at this point is still underneath the subpage)
                 setTimeout(() => { // Wait a moment so the placeholder finds its position
                     // Scroll so the shrunken cell is vertically centered

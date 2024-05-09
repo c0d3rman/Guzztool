@@ -26,13 +26,18 @@ html {
     background-color: var(--subtool-color);
     transition: all var(--subpage-animation-duration);
 
+    .cell-inner {
+        display: contents;
+        transition: padding var(--subpage-animation-duration);
+    }
+
     .cell-content {
         position: relative;
         display: flex;
         flex-direction: column;
         z-index: 2;
 
-        & > * {
+        &>* {
             margin: auto;
         }
     }
@@ -60,6 +65,18 @@ html {
         top: 0;
         left: 0;
         padding: 20px;
+
+        .cell-content {
+            float: left;
+            margin-right: 30px;
+        }
+
+        .cell-inner {
+            // Keeps text from rapidly re-wrapping during animation
+            width: calc(100vw - 40px); // 2 * .subpage padding
+            height: calc(100vh - 40px);
+            display: inline-block;
+        }
     }
 
     .subtool-icon {
@@ -79,6 +96,7 @@ html {
 
     .subpage-content {
         color: var(--text-color);
+        // overflow: hidden;
 
         // Prevent the hover overlay from ending up on top of the subpage contents
         position: relative;
