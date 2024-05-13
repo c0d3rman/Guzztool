@@ -155,7 +155,7 @@ class DataHandler {
 
 					let targetSide = this.currentMove.target.slice(0, 2);
 					let target = room.battle.getSide(targetSide).active[0];
-					let oldHP = target.hp / target.maxHP;
+					let oldHP = target.hp / (target.maxHP || 1); // TBD properly handle 0 max HP case, which apparently happens at battle end sometimes
 
 					this.currentMove.hpBefore = oldHP
 					this.currentMove.hpAfter = newHP;
@@ -237,12 +237,7 @@ const subtool = {
 		};
 
 		// Hijack the mute function so we can mute too
-		(setMute => {
-			window.BattleSound.setMute = (muted) => {
-				this.soundManager.setMute(muted);
-				setMute(muted);
-			};
-		})(window.BattleSound.setMute);
+		this.intercept(window.BattleSound, "setMute", this.soundManager.setMute);
 		this.soundManager.setMute(window.BattleSound.muted); // Send initial mute data
 
 		// Listen for rooms
@@ -269,27 +264,21 @@ const subtool = {
 
 			// Intercept init and team preview, which don't make it to addBattleMessage
 			let isInit = false;
-			(originalMethod => {
-				room.receive = function (...args) {
-					if (args[0].startsWith("|init")) {
-						isInit = true;
-						setTimeout(() => isInit = false, 100); // Wait a bit for the init message to go by
-					} else if (/^\|teampreview/m.test(args[0])) {
-						dataHandler.handleBattleMessage(["teampreview"]);
-					}
-					return originalMethod.apply(this, args);
-				};
-			})(room.receive);
+			this.intercept(room, "receive", (...args) => {
+				if (args[0].startsWith("|init")) {
+					isInit = true;
+					setTimeout(() => isInit = false, 100); // Wait a bit for the init message to go by
+				} else if (/^\|teampreview/m.test(args[0])) {
+					dataHandler.handleBattleMessage(["teampreview"]);
+				}
+			});
 
 			// Intercept battle messages being added (which is timed alongside animations)
-			(originalMethod => {
-				room.battle.scene.log.addBattleMessage = function (...args) {
-					if (!isInit) { // Avoid catch-up
-						dataHandler.handleBattleMessage(...args);
-					}
-					return originalMethod.apply(this, args);
+			this.intercept(room.battle.scene.log, "addBattleMessage", (...args) => {
+				if (!isInit) { // Avoid catch-up
+					dataHandler.handleBattleMessage(...args);
 				}
-			})(room.battle.scene.log.addBattleMessage);
+			});
 		} catch (e) {
 			this.log.error(e);
 			throw e;
