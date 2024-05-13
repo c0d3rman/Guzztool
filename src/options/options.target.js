@@ -108,7 +108,6 @@ $(function () {
         // Perform the animation to fullscreen the cell
         $(this).addClass('subpage');
         const animationDuration = parseFloat(getComputedStyle($("#grid").get()[0], null).getPropertyValue('--subpage-animation-duration')) * 1000; // Get animation duration from CSS
-        console.log("Animation duration:", animationDuration);
         $(this).find('.hover-overlay').animate({ opacity: 0 }, { duration: animationDuration, queue: false })
             .promise().done(() => $("#grid").hide()); // Hide the grid at the end so scrolling turns off
         setTimeout(() => {
