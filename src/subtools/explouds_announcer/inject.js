@@ -8,6 +8,8 @@ class DataHandler {
 	}
 
 	handleBattleMessage([command, ...params], data) {
+		// For reference, look at runMajor and runMinor in battle.ts
+
 		this.subtool.log.debug("Battle message:", command, params, data);
 
 		switch (command) {
@@ -262,7 +264,7 @@ const subtool = {
 			return originalMethod.apply(obj, args);
 		}
 	},
-	
+
 	modifyRoom: async function (room) {
 		try {
 			const dataHandler = new DataHandler(this);
