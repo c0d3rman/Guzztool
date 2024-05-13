@@ -1,7 +1,21 @@
 const subtool = {
 	init: function () {
-		if (!window.battle) return;
+		// Listen for new battles being opened (e.g. in the replay.pokemonshowdown.com homepage)
+		const subtool = this;
+		(origMethod => {
+			BattlePanel.prototype.loadResult = function (...args) {
+				const output = origMethod.apply(this, args);
+				subtool.modifyBattle();
+				return output;
+			};
+		})(BattlePanel.prototype.loadResult);
 
+		// If we load straight into a battle, modify it
+		if (window.battle) this.modifyBattle();
+	},
+
+	modifyBattle: function () {
+		this.log.debug("Hooking TTS into battle");
 		const pokemonNameOriginal = window.battle.scene.log.battleParser.pokemonName;
 		const pokemonNameModified = (...args) => {
 			const [baseName] = args;
