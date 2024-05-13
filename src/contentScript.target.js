@@ -21,7 +21,6 @@ try {
             if (manifest.id === "_guzztool") return;
             if (!options[manifest.id]?.enabled) return;
             manifest.matches.forEach(assertValidPattern);
-            log.info("Matches:", manifest.matches);
             if (!doesUrlMatchPatterns(window.location, ...manifest.matches)) return;
 
             const subtool = require(`@guzztool/subtools/${manifest.id}/content.js`).default;
