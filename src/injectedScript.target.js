@@ -3,9 +3,7 @@
 import { RoomListener } from '@guzztool/util/RoomListener';
 import log from '@guzztool/util/log';
 import * as messaging from "webext-bridge/window";
-
-// Polyfill
-if (!globalThis.URLPattern) require("urlpattern-polyfill");
+import {doesUrlMatchPatterns, assertValidPattern} from 'webext-patterns';
 
 
 try {
@@ -17,7 +15,8 @@ try {
         try { // Inner guard so one subtool crashing doesn't affect the others
             if (manifest.id === "_guzztool") return;
             if (!options[manifest.id]?.enabled) return;
-            if (!manifest.matches.some(match => new URLPattern(match).test(window.location))) return;
+            manifest.matches.forEach(assertValidPattern);
+            if (!doesUrlMatchPatterns(window.location, ...manifest.matches)) return;
 
             const subtool = require(`@guzztool/subtools/${manifest.id}/inject.js`).default;
             subtool.manifest = manifest;

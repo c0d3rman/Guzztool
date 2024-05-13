@@ -4,9 +4,7 @@ Its main role is to create a <script> element in the page that will load injecte
 import log from '@guzztool/util/log';
 import browser from 'webextension-polyfill';
 import * as messaging from "webext-bridge/content-script";
-
-// Polyfill
-if (!globalThis.URLPattern) require("urlpattern-polyfill");
+import {doesUrlMatchPatterns, assertValidPattern} from 'webext-patterns';
 
 
 try {
@@ -22,7 +20,9 @@ try {
         try { // Inner guard so one subtool crashing doesn't affect the others
             if (manifest.id === "_guzztool") return;
             if (!options[manifest.id]?.enabled) return;
-            if (!manifest.matches.some(match => new URLPattern(match).test(window.location))) return;
+            manifest.matches.forEach(assertValidPattern);
+            log.info("Matches:", manifest.matches);
+            if (!doesUrlMatchPatterns(window.location, ...manifest.matches)) return;
 
             const subtool = require(`@guzztool/subtools/${manifest.id}/content.js`).default;
             subtool.manifest = manifest;
