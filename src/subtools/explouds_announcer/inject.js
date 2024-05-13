@@ -10,8 +10,6 @@ class DataHandler {
 	handleBattleMessage([command, ...params], data) {
 		// For reference, look at runMajor and runMinor in battle.ts
 
-		this.subtool.log.debug("Battle message:", command, params, data);
-
 		switch (command) {
 			case "":
 				this.completeMove();

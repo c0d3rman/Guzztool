@@ -8,7 +8,6 @@ import browser from 'webextension-polyfill';
 const subtool = {
 	init: async function () {
 		const assetMap = await fetch(browser.runtime.getURL(`subtools/${this.manifest.id}/assets/assetMap.json`)).then(response => response.json());
-		this.log.debug("Asset map: ", assetMap);
 
 		const subtool = this;
 		this.soundManager = {
