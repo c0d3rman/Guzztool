@@ -1,0 +1,3 @@
+[submodule "webext-bridge"]
+	path = webext-bridge
+	url = https://github.com/serversideup/webext-bridge.git
