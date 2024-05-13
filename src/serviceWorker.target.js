@@ -48,8 +48,9 @@ try {
 
     // Debug mode
     browser.storage.sync.onChanged.addListener((changes) => {
-        if (changes.options &&
-            changes.options.newValue._guzztool.subtool_settings.debug != changes.options.oldValue._guzztool.subtool_settings.debug) {
+        if (changes.options?.newValue?._guzztool?.subtool_settings?.debug !== undefined &&
+            changes.options?.newValue?._guzztool?.subtool_settings?.debug !==
+            changes.options?.oldValue?._guzztool?.subtool_settings?.debug) {
             log.info(`Debug mode ${changes.options.newValue._guzztool.subtool_settings.debug ? 'enabled' : 'disabled'}`);
             setLogLevel(changes.options.newValue._guzztool.subtool_settings.debug || __DEV__);
         }
