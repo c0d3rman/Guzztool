@@ -1,7 +1,7 @@
 {
   "name": "guzztool",
   "version": "1.0.0",
-  "description": "",
+  "description": "A multitool for improving the Pokemon Showdown experience.",
   "scripts": {
     "build": "webpack",
     "build:watch": "webpack --watch",

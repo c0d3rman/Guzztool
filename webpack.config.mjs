@@ -57,7 +57,7 @@ const exportForTarget = BUILD_TARGET => {
     const SUBTOOLS = fs.readdirSync(path.join(__dirname, "src", "subtools"), { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .reduce((acc, dirent) => {
-            acc[dirent.name] = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "manifest.json"), 'utf8'));;
+            acc[dirent.name] = JSON.parse(fs.readFileSync(path.join(__dirname, "src", "subtools", dirent.name, "subtool.json"), 'utf8'));;
             acc[dirent.name].id = dirent.name;
             acc[dirent.name].iconPath = path.join("/subtools", dirent.name, acc[dirent.name].icon);
             return acc;
