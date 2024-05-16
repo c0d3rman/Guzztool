@@ -28,8 +28,7 @@
     "*://*.smogon.com/"
   ],
   "permissions": [
-    "storage",
-    "offscreen"
+    "storage"
   ],
   "options_ui": {
     "page": "options/options.html",
