@@ -6,7 +6,8 @@
     "build": "webpack",
     "build:watch": "webpack --watch",
     "export": "PRODUCTION_ENV=true webpack",
-    "export:watch": "PRODUCTION_ENV=true webpack --watch"
+    "export:watch": "PRODUCTION_ENV=true webpack --watch",
+    "postinstall": "cd ./webext-bridge && npm install && npm run build"
   },
   "devDependencies": {
     "chalk": "^5.3.0",
