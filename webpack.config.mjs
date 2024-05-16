@@ -12,11 +12,12 @@ import webpack from 'webpack';
 import CopyPlugin from 'copy-webpack-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
+import WebExtPlugin from 'web-ext-plugin';
 import HandlebarsPlugin from 'handlebars-webpack-plugin';
+import ZipPlugin from 'zip-webpack-plugin';
 import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath.js';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
-import WebpackAddonLinterPlugin from './WebpackAddonLinterPlugin.mjs';
 import SUBTOOL_ORDER from './src/subtools/subtool_order.json' with { type: "json" };
 
 
@@ -50,7 +51,7 @@ const exportForTarget = BUILD_TARGET => {
     ]);
 
     const output = {
-        path: path.resolve(__dirname, __DEV__ ? 'dist-dev' : 'dist') + "/" + BUILD_TARGET,
+        path: path.join(path.resolve(__dirname, __DEV__ ? 'dist-dev' : 'dist'), BUILD_TARGET),
         clean: true, // clears out the build folder before building
     };
 
@@ -254,8 +255,32 @@ const exportForTarget = BUILD_TARGET => {
         new RemoveEmptyScriptsPlugin(),
         new HandlebarsPlugin(handlebarsPluginConfig),
     ];
-    if (BUILD_TARGET == 'firefox') {
-        plugins.push(new WebpackAddonLinterPlugin({ path: output.path }));
+    if (BUILD_TARGET == 'chrome') {
+        if (!__DEV__) {
+            plugins.push(new ZipPlugin({
+                // pathPrefix: 'relative/path',
+                path: '..',
+                filename: BUILD_TARGET + ".zip",
+
+                // // OPTIONAL: defaults to the identity function
+                // // a function mapping asset paths to new paths
+                // pathMapper: function (assetPath) {
+                //     // put all pngs in an `images` subdir
+                //     if (assetPath.endsWith('.png'))
+                //         return path.join(path.dirname(assetPath), 'images', path.basename(assetPath));
+                //     return assetPath;
+                // },
+            }));
+        }
+    } else if (BUILD_TARGET == 'firefox') {
+        plugins.push(new WebExtPlugin({
+            sourceDir: output.path,
+            artifactsDir: path.dirname(output.path),
+            outputFilename: BUILD_TARGET + ".zip",
+            runLint: __DEV__, // in production mode buildPackage already lints
+            buildPackage: !__DEV__,
+            overwriteDest: true,
+        }));
     }
 
     // source maps for easier debugging of minified bundles
@@ -274,6 +299,7 @@ const exportForTarget = BUILD_TARGET => {
         plugins,
         optimization,
         devtool,
+        performance: { maxAssetSize: 1000000000000 },
     };
 
     return config;
