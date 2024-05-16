@@ -258,18 +258,8 @@ const exportForTarget = BUILD_TARGET => {
     if (BUILD_TARGET == 'chrome') {
         if (!__DEV__) {
             plugins.push(new ZipPlugin({
-                // pathPrefix: 'relative/path',
-                path: '..',
+                path: '..', // Relative to output.path i.e. dist/BUILD_TARGET/
                 filename: BUILD_TARGET + ".zip",
-
-                // // OPTIONAL: defaults to the identity function
-                // // a function mapping asset paths to new paths
-                // pathMapper: function (assetPath) {
-                //     // put all pngs in an `images` subdir
-                //     if (assetPath.endsWith('.png'))
-                //         return path.join(path.dirname(assetPath), 'images', path.basename(assetPath));
-                //     return assetPath;
-                // },
             }));
         }
     } else if (BUILD_TARGET == 'firefox') {
@@ -280,6 +270,8 @@ const exportForTarget = BUILD_TARGET => {
             runLint: __DEV__, // in production mode buildPackage already lints
             buildPackage: !__DEV__,
             overwriteDest: true,
+            firefox: '/usr/bin/true', // this plugin launches Firefox when running in :watch mode (which we don't want), so we tell it "Firefox" is this noop binary
+            noInput: false, // true by default in watch mode, so we set it to false (though we don't really use it)
         }));
     }
 
