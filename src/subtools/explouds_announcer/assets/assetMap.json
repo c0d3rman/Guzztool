@@ -1,166 +1,166 @@
 {
     "attack": [
-        "BANK_394_INSTR_0000_SND_0000.wav",
-        "BANK_395_INSTR_0000_SND_0000.wav",
-        "BANK_396_INSTR_0000_SND_0000.wav",
-        "BANK_397_INSTR_0000_SND_0000.wav",
-        "BANK_398_INSTR_0000_SND_0000.wav",
-        "BANK_3A1_INSTR_0000_SND_0000.wav"
+        "BANK_394_INSTR_0000_SND_0000.mp3",
+        "BANK_395_INSTR_0000_SND_0000.mp3",
+        "BANK_396_INSTR_0000_SND_0000.mp3",
+        "BANK_397_INSTR_0000_SND_0000.mp3",
+        "BANK_398_INSTR_0000_SND_0000.mp3",
+        "BANK_3A1_INSTR_0000_SND_0000.mp3"
     ],
     "attack_crit": [
-        "BANK_37B_INSTR_0000_SND_0000.wav",
-        "BANK_37C_INSTR_0000_SND_0000.wav",
-        "BANK_37D_INSTR_0000_SND_0000.wav",
-        "BANK_37E_INSTR_0000_SND_0000.wav",
-        "BANK_37F_INSTR_0000_SND_0000.wav",
-        "BANK_3B2_INSTR_0000_SND_0000.wav",
-        "BANK_3B3_INSTR_0000_SND_0000.wav",
-        "BANK_3B4_INSTR_0000_SND_0000.wav"
+        "BANK_37B_INSTR_0000_SND_0000.mp3",
+        "BANK_37C_INSTR_0000_SND_0000.mp3",
+        "BANK_37D_INSTR_0000_SND_0000.mp3",
+        "BANK_37E_INSTR_0000_SND_0000.mp3",
+        "BANK_37F_INSTR_0000_SND_0000.mp3",
+        "BANK_3B2_INSTR_0000_SND_0000.mp3",
+        "BANK_3B3_INSTR_0000_SND_0000.mp3",
+        "BANK_3B4_INSTR_0000_SND_0000.mp3"
     ],
     "attack_lighthit": [
-        "BANK_38A_INSTR_0000_SND_0000.wav",
-        "BANK_38B_INSTR_0000_SND_0000.wav",
-        "BANK_38C_INSTR_0000_SND_0000.wav",
-        "BANK_399_INSTR_0000_SND_0000.wav",
-        "BANK_39A_INSTR_0000_SND_0000.wav",
-        "BANK_39B_INSTR_0000_SND_0000.wav",
-        "BANK_39C_INSTR_0000_SND_0000.wav",
-        "BANK_39D_INSTR_0000_SND_0000.wav",
-        "BANK_3A9_INSTR_0000_SND_0000.wav",
-        "BANK_3AA_INSTR_0000_SND_0000.wav",
-        "BANK_3AB_INSTR_0000_SND_0000.wav"
+        "BANK_38A_INSTR_0000_SND_0000.mp3",
+        "BANK_38B_INSTR_0000_SND_0000.mp3",
+        "BANK_38C_INSTR_0000_SND_0000.mp3",
+        "BANK_399_INSTR_0000_SND_0000.mp3",
+        "BANK_39A_INSTR_0000_SND_0000.mp3",
+        "BANK_39B_INSTR_0000_SND_0000.mp3",
+        "BANK_39C_INSTR_0000_SND_0000.mp3",
+        "BANK_39D_INSTR_0000_SND_0000.mp3",
+        "BANK_3A9_INSTR_0000_SND_0000.mp3",
+        "BANK_3AA_INSTR_0000_SND_0000.mp3",
+        "BANK_3AB_INSTR_0000_SND_0000.mp3"
     ],
     "attack_redhealth": [
-        "BANK_3A4_INSTR_0000_SND_0000.wav",
-        "BANK_3A5_INSTR_0000_SND_0000.wav",
-        "BANK_3A6_INSTR_0000_SND_0000.wav",
-        "BANK_3A7_INSTR_0000_SND_0000.wav",
-        "BANK_3A8_INSTR_0000_SND_0000.wav"
+        "BANK_3A4_INSTR_0000_SND_0000.mp3",
+        "BANK_3A5_INSTR_0000_SND_0000.mp3",
+        "BANK_3A6_INSTR_0000_SND_0000.mp3",
+        "BANK_3A7_INSTR_0000_SND_0000.mp3",
+        "BANK_3A8_INSTR_0000_SND_0000.mp3"
     ],
     "attack_rocktype": [
-        "BANK_373_INSTR_0000_SND_0000.wav"
+        "BANK_373_INSTR_0000_SND_0000.mp3"
     ],
     "attack_strong": [
-        "BANK_374_INSTR_0000_SND_0000.wav",
-        "BANK_375_INSTR_0000_SND_0000.wav",
-        "BANK_376_INSTR_0000_SND_0000.wav",
-        "BANK_377_INSTR_0000_SND_0000.wav",
-        "BANK_378_INSTR_0000_SND_0000.wav",
-        "BANK_38D_INSTR_0000_SND_0000.wav",
-        "BANK_38E_INSTR_0000_SND_0000.wav",
-        "BANK_38F_INSTR_0000_SND_0000.wav",
-        "BANK_390_INSTR_0000_SND_0000.wav",
-        "BANK_391_INSTR_0000_SND_0000.wav",
-        "BANK_392_INSTR_0000_SND_0000.wav",
-        "BANK_393_INSTR_0000_SND_0000.wav",
-        "BANK_3AD_INSTR_0000_SND_0000.wav",
-        "BANK_3AE_INSTR_0000_SND_0000.wav",
-        "BANK_3AF_INSTR_0000_SND_0000.wav",
-        "BANK_3B0_INSTR_0000_SND_0000.wav",
-        "BANK_3B1_INSTR_0000_SND_0000.wav"
+        "BANK_374_INSTR_0000_SND_0000.mp3",
+        "BANK_375_INSTR_0000_SND_0000.mp3",
+        "BANK_376_INSTR_0000_SND_0000.mp3",
+        "BANK_377_INSTR_0000_SND_0000.mp3",
+        "BANK_378_INSTR_0000_SND_0000.mp3",
+        "BANK_38D_INSTR_0000_SND_0000.mp3",
+        "BANK_38E_INSTR_0000_SND_0000.mp3",
+        "BANK_38F_INSTR_0000_SND_0000.mp3",
+        "BANK_390_INSTR_0000_SND_0000.mp3",
+        "BANK_391_INSTR_0000_SND_0000.mp3",
+        "BANK_392_INSTR_0000_SND_0000.mp3",
+        "BANK_393_INSTR_0000_SND_0000.mp3",
+        "BANK_3AD_INSTR_0000_SND_0000.mp3",
+        "BANK_3AE_INSTR_0000_SND_0000.mp3",
+        "BANK_3AF_INSTR_0000_SND_0000.mp3",
+        "BANK_3B0_INSTR_0000_SND_0000.mp3",
+        "BANK_3B1_INSTR_0000_SND_0000.mp3"
     ],
     "attack_strong_firstturn": [
-        "BANK_39E_INSTR_0000_SND_0000.wav",
-        "BANK_39F_INSTR_0000_SND_0000.wav"
+        "BANK_39E_INSTR_0000_SND_0000.mp3",
+        "BANK_39F_INSTR_0000_SND_0000.mp3"
     ],
     "attack_strong_nve": [
-        "BANK_3AC_INSTR_0000_SND_0000.wav"
+        "BANK_3AC_INSTR_0000_SND_0000.mp3"
     ],
     "battle_end": [
-        "BANK_3EA_INSTR_0000_SND_0000.wav",
-        "BANK_3EB_INSTR_0000_SND_0000.wav",
-        "BANK_3EC_INSTR_0000_SND_0000.wav"
+        "BANK_3EA_INSTR_0000_SND_0000.mp3",
+        "BANK_3EB_INSTR_0000_SND_0000.mp3",
+        "BANK_3EC_INSTR_0000_SND_0000.mp3"
     ],
     "battle_start": [
-        "anything goes.wav",
-        "battle now.wav",
-        "event battle.wav",
-        "final battle.wav",
-        "free battle.wav"
+        "anything goes.mp3",
+        "battle now.mp3",
+        "event battle.mp3",
+        "final battle.mp3",
+        "free battle.mp3"
     ],
     "blocked": [
-        "BANK_3E5_INSTR_0000_SND_0000.wav",
-        "BANK_3E6_INSTR_0000_SND_0000.wav",
-        "BANK_3E7_INSTR_0000_SND_0000.wav",
-        "BANK_3E8_INSTR_0000_SND_0000.wav",
-        "BANK_3E9_INSTR_0000_SND_0000.wav"
+        "BANK_3E5_INSTR_0000_SND_0000.mp3",
+        "BANK_3E6_INSTR_0000_SND_0000.mp3",
+        "BANK_3E7_INSTR_0000_SND_0000.mp3",
+        "BANK_3E8_INSTR_0000_SND_0000.mp3",
+        "BANK_3E9_INSTR_0000_SND_0000.mp3"
     ],
     "disable_end": [
-        "BANK_4E4_INSTR_0000_SND_0000.wav",
-        "BANK_4E5_INSTR_0000_SND_0000.wav"
+        "BANK_4E4_INSTR_0000_SND_0000.mp3",
+        "BANK_4E5_INSTR_0000_SND_0000.mp3"
     ],
     "endured_hit": [
-        "BANK_53B_INSTR_0000_SND_0000.wav",
-        "BANK_53C_INSTR_0000_SND_0000.wav",
-        "BANK_549_INSTR_0000_SND_0000.wav"
+        "BANK_53B_INSTR_0000_SND_0000.mp3",
+        "BANK_53C_INSTR_0000_SND_0000.mp3",
+        "BANK_549_INSTR_0000_SND_0000.mp3"
     ],
     "fail": [
-        "BANK_3BA_INSTR_0000_SND_0000.wav",
-        "BANK_3C9_INSTR_0000_SND_0000.wav",
-        "BANK_3CA_INSTR_0000_SND_0000.wav"
+        "BANK_3BA_INSTR_0000_SND_0000.mp3",
+        "BANK_3C9_INSTR_0000_SND_0000.mp3",
+        "BANK_3CA_INSTR_0000_SND_0000.mp3"
     ],
     "fail_again": [
-        "BANK_3BB_INSTR_0000_SND_0000.wav",
-        "BANK_3CB_INSTR_0000_SND_0000.wav",
-        "BANK_3CC_INSTR_0000_SND_0000.wav"
+        "BANK_3BB_INSTR_0000_SND_0000.mp3",
+        "BANK_3CB_INSTR_0000_SND_0000.mp3",
+        "BANK_3CC_INSTR_0000_SND_0000.mp3"
     ],
     "flinch": [
-        "BANK_513_INSTR_0000_SND_0000.wav"
+        "BANK_513_INSTR_0000_SND_0000.mp3"
     ],
     "ko": [
-        "BANK_3A3_INSTR_0000_SND_0000.wav",
-        "BANK_409_INSTR_0000_SND_0000.wav",
-        "BANK_40A_INSTR_0000_SND_0000.wav",
-        "BANK_40B_INSTR_0000_SND_0000.wav",
-        "BANK_40C_INSTR_0000_SND_0000.wav",
-        "BANK_40D_INSTR_0000_SND_0000.wav",
-        "BANK_40E_INSTR_0000_SND_0000.wav",
-        "BANK_40F_INSTR_0000_SND_0000.wav"
+        "BANK_3A3_INSTR_0000_SND_0000.mp3",
+        "BANK_409_INSTR_0000_SND_0000.mp3",
+        "BANK_40A_INSTR_0000_SND_0000.mp3",
+        "BANK_40B_INSTR_0000_SND_0000.mp3",
+        "BANK_40C_INSTR_0000_SND_0000.mp3",
+        "BANK_40D_INSTR_0000_SND_0000.mp3",
+        "BANK_40E_INSTR_0000_SND_0000.mp3",
+        "BANK_40F_INSTR_0000_SND_0000.mp3"
     ],
     "ko_double": [
-        "BANK_41D_INSTR_0000_SND_0000.wav",
-        "BANK_41E_INSTR_0000_SND_0000.wav",
-        "BANK_422_INSTR_0000_SND_0000.wav"
+        "BANK_41D_INSTR_0000_SND_0000.mp3",
+        "BANK_41E_INSTR_0000_SND_0000.mp3",
+        "BANK_422_INSTR_0000_SND_0000.mp3"
     ],
     "ko_firstturn": [
-        "BANK_3A0_INSTR_0000_SND_0000.wav",
-        "BANK_417_INSTR_0000_SND_0000.wav",
-        "BANK_418_INSTR_0000_SND_0000.wav"
+        "BANK_3A0_INSTR_0000_SND_0000.mp3",
+        "BANK_417_INSTR_0000_SND_0000.mp3",
+        "BANK_418_INSTR_0000_SND_0000.mp3"
     ],
     "ko_last": [
-        "BANK_423_INSTR_0000_SND_0000.wav",
-        "BANK_424_INSTR_0000_SND_0000.wav",
-        "BANK_425_INSTR_0000_SND_0000.wav"
+        "BANK_423_INSTR_0000_SND_0000.mp3",
+        "BANK_424_INSTR_0000_SND_0000.mp3",
+        "BANK_425_INSTR_0000_SND_0000.mp3"
     ],
     "ko_lighthit": [
-        "BANK_41C_INSTR_0000_SND_0000.wav"
+        "BANK_41C_INSTR_0000_SND_0000.mp3"
     ],
     "ko_longlived": [
-        "BANK_41A_INSTR_0000_SND_0000.wav",
-        "BANK_41B_INSTR_0000_SND_0000.wav"
+        "BANK_41A_INSTR_0000_SND_0000.mp3",
+        "BANK_41B_INSTR_0000_SND_0000.mp3"
     ],
     "ko_ohko": [
-        "BANK_410_INSTR_0000_SND_0000.wav",
-        "BANK_411_INSTR_0000_SND_0000.wav",
-        "BANK_412_INSTR_0000_SND_0000.wav",
-        "BANK_413_INSTR_0000_SND_0000.wav",
-        "BANK_419_INSTR_0000_SND_0000.wav"
+        "BANK_410_INSTR_0000_SND_0000.mp3",
+        "BANK_411_INSTR_0000_SND_0000.mp3",
+        "BANK_412_INSTR_0000_SND_0000.mp3",
+        "BANK_413_INSTR_0000_SND_0000.mp3",
+        "BANK_419_INSTR_0000_SND_0000.mp3"
     ],
     "ko_self": [
-        "BANK_41F_INSTR_0000_SND_0000.wav"
+        "BANK_41F_INSTR_0000_SND_0000.mp3"
     ],
     "miss": [
-        "BANK_3CD_INSTR_0000_SND_0000.wav",
-        "BANK_3CE_INSTR_0000_SND_0000.wav",
-        "BANK_3CF_INSTR_0000_SND_0000.wav",
-        "BANK_3D2_INSTR_0000_SND_0000.wav",
-        "BANK_3D3_INSTR_0000_SND_0000.wav"
+        "BANK_3CD_INSTR_0000_SND_0000.mp3",
+        "BANK_3CE_INSTR_0000_SND_0000.mp3",
+        "BANK_3CF_INSTR_0000_SND_0000.mp3",
+        "BANK_3D2_INSTR_0000_SND_0000.mp3",
+        "BANK_3D3_INSTR_0000_SND_0000.mp3"
     ],
     "miss_again": [
-        "BANK_3D0_INSTR_0000_SND_0000.wav",
-        "BANK_3D1_INSTR_0000_SND_0000.wav",
-        "BANK_3D4_INSTR_0000_SND_0000.wav",
-        "BANK_3D5_INSTR_0000_SND_0000.wav"
+        "BANK_3D0_INSTR_0000_SND_0000.mp3",
+        "BANK_3D1_INSTR_0000_SND_0000.mp3",
+        "BANK_3D4_INSTR_0000_SND_0000.mp3",
+        "BANK_3D5_INSTR_0000_SND_0000.mp3"
     ],
     "moves": [
         "Absorb",
@@ -373,15 +373,15 @@
         "Zap Cannon"
     ],
     "no_effect": [
-        "BANK_3D6_INSTR_0000_SND_0000.wav",
-        "BANK_3D7_INSTR_0000_SND_0000.wav",
-        "BANK_3D8_INSTR_0000_SND_0000.wav",
-        "BANK_3D9_INSTR_0000_SND_0000.wav"
+        "BANK_3D6_INSTR_0000_SND_0000.mp3",
+        "BANK_3D7_INSTR_0000_SND_0000.mp3",
+        "BANK_3D8_INSTR_0000_SND_0000.mp3",
+        "BANK_3D9_INSTR_0000_SND_0000.mp3"
     ],
     "not_very_effective": [
-        "BANK_379_INSTR_0000_SND_0000.wav",
-        "BANK_37A_INSTR_0000_SND_0000.wav",
-        "BANK_389_INSTR_0000_SND_0000.wav"
+        "BANK_379_INSTR_0000_SND_0000.mp3",
+        "BANK_37A_INSTR_0000_SND_0000.mp3",
+        "BANK_389_INSTR_0000_SND_0000.mp3"
     ],
     "pokemon": [
         "Abra",
@@ -637,89 +637,89 @@
         "Zubat"
     ],
     "rain_end": [
-        "BANK_4A8_INSTR_0000_SND_0000.wav",
-        "BANK_523_INSTR_0000_SND_0000.wav"
+        "BANK_4A8_INSTR_0000_SND_0000.mp3",
+        "BANK_523_INSTR_0000_SND_0000.mp3"
     ],
     "rain_start": [
-        "BANK_4A2_INSTR_0000_SND_0000.wav",
-        "BANK_4A3_INSTR_0000_SND_0000.wav",
-        "BANK_51F_INSTR_0000_SND_0000.wav",
-        "BANK_520_INSTR_0000_SND_0000.wav"
+        "BANK_4A2_INSTR_0000_SND_0000.mp3",
+        "BANK_4A3_INSTR_0000_SND_0000.mp3",
+        "BANK_51F_INSTR_0000_SND_0000.mp3",
+        "BANK_520_INSTR_0000_SND_0000.mp3"
     ],
     "sand_end": [
-        "BANK_4A9_INSTR_0000_SND_0000.wav",
-        "BANK_52B_INSTR_0000_SND_0000.wav"
+        "BANK_4A9_INSTR_0000_SND_0000.mp3",
+        "BANK_52B_INSTR_0000_SND_0000.mp3"
     ],
     "sand_start": [
-        "BANK_4A4_INSTR_0000_SND_0000.wav",
-        "BANK_4A5_INSTR_0000_SND_0000.wav",
-        "BANK_528_INSTR_0000_SND_0000.wav",
-        "BANK_529_INSTR_0000_SND_0000.wav",
-        "BANK_52A_INSTR_0000_SND_0000.wav",
-        "BANK_52C_INSTR_0000_SND_0000.wav",
-        "BANK_52D_INSTR_0000_SND_0000.wav"
+        "BANK_4A4_INSTR_0000_SND_0000.mp3",
+        "BANK_4A5_INSTR_0000_SND_0000.mp3",
+        "BANK_528_INSTR_0000_SND_0000.mp3",
+        "BANK_529_INSTR_0000_SND_0000.mp3",
+        "BANK_52A_INSTR_0000_SND_0000.mp3",
+        "BANK_52C_INSTR_0000_SND_0000.mp3",
+        "BANK_52D_INSTR_0000_SND_0000.mp3"
     ],
     "sub_hit": [
-        "BANK_3BF_INSTR_0000_SND_0000.wav",
-        "BANK_3C0_INSTR_0000_SND_0000.wav"
+        "BANK_3BF_INSTR_0000_SND_0000.mp3",
+        "BANK_3C0_INSTR_0000_SND_0000.mp3"
     ],
     "sub_start": [
-        "BANK_4FC_INSTR_0000_SND_0000.wav"
+        "BANK_4FC_INSTR_0000_SND_0000.mp3"
     ],
     "sun_end": [
-        "BANK_4AA_INSTR_0000_SND_0000.wav",
-        "BANK_526_INSTR_0000_SND_0000.wav"
+        "BANK_4AA_INSTR_0000_SND_0000.mp3",
+        "BANK_526_INSTR_0000_SND_0000.mp3"
     ],
     "sun_start": [
-        "BANK_4A6_INSTR_0000_SND_0000.wav",
-        "BANK_4A7_INSTR_0000_SND_0000.wav",
-        "BANK_524_INSTR_0000_SND_0000.wav",
-        "BANK_527_INSTR_0000_SND_0000.wav"
+        "BANK_4A6_INSTR_0000_SND_0000.mp3",
+        "BANK_4A7_INSTR_0000_SND_0000.mp3",
+        "BANK_524_INSTR_0000_SND_0000.mp3",
+        "BANK_527_INSTR_0000_SND_0000.mp3"
     ],
     "supereffective": [
-        "BANK_380_INSTR_0000_SND_0000.wav",
-        "BANK_381_INSTR_0000_SND_0000.wav",
-        "BANK_382_INSTR_0000_SND_0000.wav",
-        "BANK_383_INSTR_0000_SND_0000.wav",
-        "BANK_384_INSTR_0000_SND_0000.wav",
-        "BANK_385_INSTR_0000_SND_0000.wav",
-        "BANK_386_INSTR_0000_SND_0000.wav",
-        "BANK_387_INSTR_0000_SND_0000.wav",
-        "BANK_388_INSTR_0000_SND_0000.wav"
+        "BANK_380_INSTR_0000_SND_0000.mp3",
+        "BANK_381_INSTR_0000_SND_0000.mp3",
+        "BANK_382_INSTR_0000_SND_0000.mp3",
+        "BANK_383_INSTR_0000_SND_0000.mp3",
+        "BANK_384_INSTR_0000_SND_0000.mp3",
+        "BANK_385_INSTR_0000_SND_0000.mp3",
+        "BANK_386_INSTR_0000_SND_0000.mp3",
+        "BANK_387_INSTR_0000_SND_0000.mp3",
+        "BANK_388_INSTR_0000_SND_0000.mp3"
     ],
     "switch": [
-        "BANK_364_INSTR_0000_SND_0000.wav",
-        "BANK_365_INSTR_0000_SND_0000.wav",
-        "BANK_366_INSTR_0000_SND_0000.wav",
-        "BANK_367_INSTR_0000_SND_0000.wav",
-        "BANK_368_INSTR_0000_SND_0000.wav",
-        "BANK_369_INSTR_0000_SND_0000.wav",
-        "BANK_370_INSTR_0000_SND_0000.wav",
-        "BANK_371_INSTR_0000_SND_0000.wav"
+        "BANK_364_INSTR_0000_SND_0000.mp3",
+        "BANK_365_INSTR_0000_SND_0000.mp3",
+        "BANK_366_INSTR_0000_SND_0000.mp3",
+        "BANK_367_INSTR_0000_SND_0000.mp3",
+        "BANK_368_INSTR_0000_SND_0000.mp3",
+        "BANK_369_INSTR_0000_SND_0000.mp3",
+        "BANK_370_INSTR_0000_SND_0000.mp3",
+        "BANK_371_INSTR_0000_SND_0000.mp3"
     ],
     "switch_again": [
-        "BANK_36A_INSTR_0000_SND_0000.wav",
-        "BANK_36B_INSTR_0000_SND_0000.wav"
+        "BANK_36A_INSTR_0000_SND_0000.mp3",
+        "BANK_36B_INSTR_0000_SND_0000.mp3"
     ],
     "switch_baton_pass": [
-        "BANK_36F_INSTR_0000_SND_0000.wav"
+        "BANK_36F_INSTR_0000_SND_0000.mp3"
     ],
     "switch_double": [
-        "BANK_36C_INSTR_0000_SND_0000.wav"
+        "BANK_36C_INSTR_0000_SND_0000.mp3"
     ],
     "switch_forced": [
-        "BANK_372_INSTR_0000_SND_0000.wav"
+        "BANK_372_INSTR_0000_SND_0000.mp3"
     ],
     "time_almost": [
-        "BANK_569_INSTR_0000_SND_0000.wav"
+        "BANK_569_INSTR_0000_SND_0000.mp3"
     ],
     "time_half": [
-        "BANK_568_INSTR_0000_SND_0000.wav"
+        "BANK_568_INSTR_0000_SND_0000.mp3"
     ],
     "time_out": [
-        "BANK_56A_INSTR_0000_SND_0000.wav"
+        "BANK_56A_INSTR_0000_SND_0000.mp3"
     ],
     "time_plenty": [
-        "BANK_567_INSTR_0000_SND_0000.wav"
+        "BANK_567_INSTR_0000_SND_0000.mp3"
     ]
 }
