@@ -14,7 +14,7 @@ import TerserPlugin from 'terser-webpack-plugin';
 import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
 import WebExtPlugin from 'web-ext-plugin';
 import HandlebarsPlugin from 'handlebars-webpack-plugin';
-import ZipPlugin from 'zip-webpack-plugin';
+import RunCommandPlugin from '@radweb/webpack-run-command-plugin';
 import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath.js';
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
@@ -257,9 +257,12 @@ const exportForTarget = BUILD_TARGET => {
     ];
     if (BUILD_TARGET == 'chrome') {
         if (!__DEV__) {
-            plugins.push(new ZipPlugin({
-                path: '..', // Relative to output.path i.e. dist/BUILD_TARGET/
-                filename: BUILD_TARGET + ".zip",
+            plugins.push(new RunCommandPlugin({
+                stage: 'done',
+                run: [{
+                    cmd: `zip -r ../${BUILD_TARGET}.zip *`,
+                    opts: { cwd: output.path },
+                }],
             }));
         }
     } else if (BUILD_TARGET == 'firefox') {
