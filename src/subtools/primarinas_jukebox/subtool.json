@@ -1,0 +1,10 @@
+{
+	"name": "Primarina's Jukebox",
+	"description": "Lets you choose the music to play during battles.",
+	"icon": "icon.png",
+	"color": "#ffc0cb",
+	"matches": [
+		"*://play.pokemonshowdown.com/*",
+		"*://*.psim.us/*"
+	]
+}
