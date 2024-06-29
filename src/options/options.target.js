@@ -1,6 +1,5 @@
 import stickerify from '@guzztool/util/stickerify';
 import browser from 'webextension-polyfill';
-import subpageTemplate from './subpage.handlebars';
 import firstTimeModalTemplate from './firstTimeModal.handlebars';
 
 
@@ -40,8 +39,10 @@ $(function () {
 
     $.fn.unnumericize = function () {
         this.each(function () {
-            $(this).css($(this).data('_numericize_original_props'));
-            $(this).removeData('_numericize_original_props');
+            if ($(this).data('_numericize_original_props')) {
+                $(this).css($(this).data('_numericize_original_props'));
+                $(this).removeData('_numericize_original_props');
+            }
         });
         return this;
     }
@@ -68,7 +69,7 @@ $(function () {
 
         for (const subtoolId in data.options) {
             if (data.options[subtoolId].enabled) {
-                $(`.cell[data-subtool-id="${subtoolId}"] .toggle-switch input`).prop('checked', true);
+                $(`.cell[data-subtool-id="${subtoolId}"] .toggle-switch.enable-subtool-toggle input`).prop('checked', true);
             }
         }
         await new Promise(resolve => setTimeout(resolve, 100)); // Wait a little so animation works right
@@ -77,7 +78,7 @@ $(function () {
     });
 
     // Listen for changes in the toggle switches and update the storage
-    $('.cell-content .toggle-switch input').change(function () {
+    $('.cell-content .toggle-switch.enable-subtool-toggle input').change(function () {
         browser.storage.sync.get('options').then(data => {
             data.options[$(this).closest('.cell').data('subtool-id')]['enabled'] = $(this).prop('checked');
             browser.storage.sync.set({ options: data.options });
@@ -117,7 +118,7 @@ $(function () {
         browser.storage.sync.get('options').then(data => {
             // Create the subpage
             const subtoolId = $(this).data('subtool-id');
-            $(this).find(".cell-inner").append(subpageTemplate(SUBTOOLS[subtoolId]));
+            $(this).find(".subpage-content").removeClass("hide");
 
             // Load current settings values
             const currentSettings = data.options[subtoolId].subtool_settings;
@@ -157,7 +158,7 @@ $(function () {
                     // When the animation is done, replace the placeholder with the actual cell and clean up
                     setTimeout(() => {
                         $(this).removeClass('subpage').insertAfter(placeholder);
-                        $(this).find('.subpage-content').remove();
+                        $(this).find('.subpage-content').addClass("hide");
                         placeholder.remove();
                         $(this).find('.subtool-icon').unnumericize();
                         $(this).find('.settings-icon').unnumericize();

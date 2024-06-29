@@ -1,0 +1,46 @@
+<div id="primarinas-jukebox-music-container">
+    <div>
+        <input type="file" multiple>
+        <button class="upload-button">Upload Sounds</button>
+    </div>
+    <ul class="uploaded-sounds-list"></ul>
+
+    <template>
+        <li class="uploaded-sound">
+            {{> static/lib/toggle_switch}}
+            <span class="sound-name"></span>
+            <audio controls>
+                <source src="">
+            </audio>
+            <button class="delete-sound">X</button>
+        </li>
+    </template>
+
+    <script src="/subtools/primarinas_jukebox/options_script.js"></script>
+
+    <style>
+        #primarinas-jukebox-music-container {
+            float: left;
+        }
+
+        .uploaded-sound {
+            display: flex;
+            align-items: center;
+            vertical-align: middle;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .uploaded-sound .toggle-switch {
+            margin-right: 10px;
+        }
+        
+        .uploaded-sound .sound-name {
+            min-width: 100px;
+        }
+
+        audio {
+            margin: 0 10px;
+        }
+    </style>
+</div>

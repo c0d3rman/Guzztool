@@ -1,4 +1,4 @@
-<div class="subpage-content">
+<div class="subpage-content hide">
     <button class="back-button">Back</button>
     <h2>{{description}}</h2><br>
     {{#each settings}}
@@ -9,6 +9,8 @@
         {{else if (eq this.type "boolean")}}
         {{> static/lib/toggle_switch size="10px" input_name=id style="display: inline-block" }}
         <span>{{this.title}}</span>
+        {{else if (eq this.type "custom")}}
+        {{> (concat "subtools/" ../id "/" this.id)}}
         {{/if}}
     </div>
     <br>

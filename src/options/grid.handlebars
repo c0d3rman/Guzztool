@@ -9,9 +9,10 @@
         <img class="subtool-icon" src="{{this.iconPath}}">
         <p class="subtool-name">{{this.name}}</p>
         {{#if (ne this.id "_guzztool")}}
-        {{> static/lib/toggle_switch}}
+        {{> static/lib/toggle_switch class="enable-subtool-toggle"}}
         {{/if}}
       </div>
+      {{> options/subpage this}}
     </div>
   </div>
   {{/with}}

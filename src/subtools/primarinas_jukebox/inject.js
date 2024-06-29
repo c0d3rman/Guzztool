@@ -4,6 +4,83 @@ const subtool = {
 
 		// TBD: get music settings from content script
 		this.bgmSettings = {
+			"basic": [
+				{
+					bgmUrl: 'audio/dpp-trainer.mp3',
+					bgmStart: 13440,
+					bgmEnd: 96959,
+				},
+				{
+					bgmUrl: 'audio/dpp-rival.mp3',
+					bgmStart: 13888,
+					bgmEnd: 66352,
+				},
+				{
+					bgmUrl: 'audio/hgss-johto-trainer.mp3',
+					bgmStart: 23731,
+					bgmEnd: 125086,
+				},
+				{
+					bgmUrl: 'audio/hgss-kanto-trainer.mp3',
+					bgmStart: 13003,
+					bgmEnd: 94656,
+				},
+				{
+					bgmUrl: 'audio/bw-trainer.mp3',
+					bgmStart: 14629,
+					bgmEnd: 110109,
+				},
+				{
+					bgmUrl: 'audio/bw-rival.mp3',
+					bgmStart: 19180,
+					bgmEnd: 57373,
+				},
+				{
+					bgmUrl: 'audio/bw-subway-trainer.mp3',
+					bgmStart: 15503,
+					bgmEnd: 110984,
+				},
+				{
+					bgmUrl: 'audio/bw2-kanto-gym-leader.mp3',
+					bgmStart: 14626,
+					bgmEnd: 58986,
+				},
+				{
+					bgmUrl: 'audio/bw2-rival.mp3',
+					bgmStart: 7152,
+					bgmEnd: 68708,
+				},
+				{
+					bgmUrl: 'audio/xy-trainer.mp3',
+					bgmStart: 7802,
+					bgmEnd: 82469,
+				},
+				{
+					bgmUrl: 'audio/xy-rival.mp3',
+					bgmStart: 7802,
+					bgmEnd: 58634,
+				},
+				{
+					bgmUrl: 'audio/oras-trainer.mp3',
+					bgmStart: 13579,
+					bgmEnd: 91548,
+				},
+				{
+					bgmUrl: 'audio/oras-rival.mp3',
+					bgmStart: 14303,
+					bgmEnd: 69149,
+				},
+				{
+					bgmUrl: 'audio/sm-trainer.mp3',
+					bgmStart: 8323,
+					bgmEnd: 89230,
+				},
+				{
+					bgmUrl: 'audio/sm-rival.mp3',
+					bgmStart: 11389,
+					bgmEnd: 62158,
+				},
+			],
 			"normal": [
 				{ // Default
 					bgmUrl: "https://play.pokemonshowdown.com/audio/sm-trainer.mp3",
