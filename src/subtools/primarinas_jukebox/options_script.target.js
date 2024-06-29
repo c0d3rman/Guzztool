@@ -1,3 +1,5 @@
+import browser from 'webextension-polyfill';
+
 function readAsDataURL(file) {
     return new Promise(function (resolve, reject) {
         const reader = new FileReader();
@@ -7,12 +9,18 @@ function readAsDataURL(file) {
     });
 }
 
-$(document).ready(function () {
-    const sounds = [
-        { name: 'sound1', enabled: true, dataURI: '' },
-        { name: 'sound2', enabled: false, dataURI: '' },
-        { name: 'sound3', enabled: true, dataURI: '' },
-    ];
+$(document).ready(async function () {
+    const data = await browser.storage.sync.get('options');
+    console.log(data);
+    const settings = data.options['primarinas_jukebox'].subtool_settings.music;
+
+    const sounds = settings.basic.map((s, i) => ({ name: `bgm${i}`, enabled: true, dataURI: `https://play.pokemonshowdown.com/${s.bgmUrl}` }));
+
+    // const sounds = [
+    //     { name: 'sound1', enabled: true, dataURI: '' },
+    //     { name: 'sound2', enabled: false, dataURI: '' },
+    //     { name: 'sound3', enabled: true, dataURI: '' },
+    // ];
 
     function renderSounds() {
         const template = $('#primarinas-jukebox-music-container template')[0];
