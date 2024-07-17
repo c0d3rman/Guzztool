@@ -59,6 +59,9 @@ function modifyRoom(room) {
         // Unless we're before turn 1 (i.e. in the animation of an automatic lead being sent out), in which case there's no spoiler risk and people like to turn on the timer then
         if ((state == "turn-in-progress" || state == "spectator-turn-in-progress") && turn0Ended) {
             timerHidingCSSRule.style.setProperty("filter", "brightness(0)", "important");
+            timerHidingCSSRule.style.setProperty("width", "70px", "important");
+            timerHidingCSSRule.style.setProperty("overflow", "hidden", "important");
+            timerHidingCSSRule.style.setProperty("white-space", "nowrap", "important");
 
             // If the battle is ending (i.e. the player got turned into a spectator watching the last turn),
             // don't updateControls and do it ourselves instead
@@ -72,6 +75,9 @@ function modifyRoom(room) {
         // In all other states stop hiding the button
         else {
             timerHidingCSSRule.style.removeProperty("filter");
+            timerHidingCSSRule.style.removeProperty("width");
+            timerHidingCSSRule.style.removeProperty("overflow");
+            timerHidingCSSRule.style.removeProperty("white-space");
         }
 
         // Run the actual updateControls (if we didn't exit early)
