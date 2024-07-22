@@ -66,8 +66,8 @@ export class ListenerProxy {
 }
 
 /**
-* ArrayListenerProxy class to create a custom proxy for arrays with event handling.
-
+ * ArrayListenerProxy class to create a custom proxy for arrays with event handling.
+ * 
  * Example usage:
  * ```
  * let originalArray = [];
@@ -110,3 +110,35 @@ export class ArrayListenerProxy extends ListenerProxy {
         });
     }
 }
+
+/**
+ * FunctionListenerProxy class that allows messing with a function's arguments and return value.
+ * 
+ * Example usage:
+ * ```
+ * let someFunction = (a, b, c) => a + b + c;
+ * let functionProxy = new FunctionListenerProxy(someFunction, (originalFn, a, b, c) => {
+ *     console.log(a, b, c);
+ *     if (a === 1 && b === 2 && c === 3) return -1;
+ *     if (a > b) return originalFn(b * 2, a, c);
+ *     return originalFn(a, b, c);
+ * });
+ * someFunction = functionProxy.proxy;
+ * ```
+ */
+export class FunctionListenerProxy extends ListenerProxy {
+    /**
+     * Constructor for FunctionListenerProxy class.
+     * @param {Function} target - The target function to be proxied.
+     * @param {Function} proxyFn - The function to proxy the target function with.
+     */
+    constructor(target, proxyFn) {
+        super(target);
+        this.proxyFn = proxyFn;
+        this.handler.apply = (target, thisArg, argumentsList) => {
+            this._emit("apply", target, { thisArg, argumentsList });
+            return this.proxyFn((...args) => Reflect.apply(target, thisArg, args), ...argumentsList);
+        };
+    }
+}
+

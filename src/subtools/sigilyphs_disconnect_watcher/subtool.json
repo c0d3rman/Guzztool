@@ -1,0 +1,16 @@
+{
+	"name": "Sigilyph's Disconnect Watcher",
+	"description": "Watches for disconnections from the server and warns you.",
+	"icon": "icon.png",
+	"color": "#e9bb68",
+	"matches": ["*://play.pokemonshowdown.com/*", "*://*.psim.us/*"],
+	"settings": [
+		{
+			"id": "pollingInterval",
+			"type": "number",
+			"title": "The interval at which to poll for disconnections, in seconds.",
+			"default": 3,
+			"additional_properties": "min=1 step=1"
+		}
+	]
+}

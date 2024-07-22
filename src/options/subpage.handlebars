@@ -4,7 +4,10 @@
     {{#each settings}}
     <div class="setting">
         {{#if (eq this.type "string")}}
-        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" type="text">
+        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" type="text" {{{this.additional_properties}}}>
+        <label for="setting-{{../id}}-{{this.id}}">{{this.title}}</label>
+        {{else if (eq this.type "number")}}
+        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" type="number" {{{this.additional_properties}}}>
         <label for="setting-{{../id}}-{{this.id}}">{{this.title}}</label>
         {{else if (eq this.type "boolean")}}
         {{> static/lib/toggle_switch size="10px" input_name=id style="display: inline-block" }}
