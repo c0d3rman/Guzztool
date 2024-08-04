@@ -8,8 +8,15 @@
 		{
 			"id": "pollingInterval",
 			"type": "number",
-			"title": "The interval at which to poll for disconnections, in seconds.",
-			"default": 3,
+			"title": "How often to check for disconnections, in seconds. E.g. if you set this to 5, after 5 seconds of no activity I will check for a disconnection.",
+			"default": 5,
+			"additional_properties": "min=1 step=1"
+		},
+		{
+			"id": "timeoutDuration",
+			"type": "number",
+			"title": "How long to wait for a response before considering the user disconnected, in seconds.",
+			"default": 1,
 			"additional_properties": "min=1 step=1"
 		}
 	]
