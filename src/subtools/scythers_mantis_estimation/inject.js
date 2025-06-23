@@ -1,5 +1,7 @@
 import { FunctionListenerProxy } from "@guzztool/util/ListenerProxy";
 
+const MIN_ROLL_SUFFIX = "m";
+
 const subtool = {
   iconUrl: null,
   tooltipData: {},
@@ -57,6 +59,14 @@ const subtool = {
     return this.options?.show_power !== false;
   },
 
+  getRollMultiplier: function () {
+    return this.options?.min_roll ? 0.714 : 0.84;
+  },
+
+  isMinRoll: function () {
+    return this.options?.min_roll === true;
+  },
+
   initTooltip: function () {
     if (document.getElementById("mantis-tooltip")) return;
 
@@ -97,10 +107,14 @@ const subtool = {
 
     const attackStatName = type === "Physical" ? "Atk" : "SpA";
     const stabMultiplier = powerData.hasSTAB ? " * 1.5" : "";
+    const rollMultiplier = this.getRollMultiplier();
+    const suffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
+    const minRollExplanation = this.isMinRoll() ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>` : '';
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${typeDisplay} Power</h4>
-      <p class="mantis-tooltip-content">(${powerData.attackStat} ${attackStatName} * ${powerData.basePower} BP${stabMultiplier}) * 0.714 / 10000 ≈ ${powerData.value}</p>
+      <p class="mantis-tooltip-content">(${powerData.attackStat} ${attackStatName} * ${powerData.basePower} BP${stabMultiplier}) * ${rollMultiplier} / 10000 ≈ ${powerData.value}${suffix}</p>
+      ${minRollExplanation}
     `;
   },
 
@@ -419,7 +433,10 @@ const subtool = {
     const colors = this.getColors();
     const display = document.createElement("span");
     display.className = "mantis-power-display";
-    display.textContent = powerData.value;
+    
+    // Add suffix for min-roll values, but not for "?"
+    const suffix = this.isMinRoll() && powerData.value !== "?" ? MIN_ROLL_SUFFIX : "";
+    display.textContent = powerData.value + suffix;
     display.style.color =
       powerData.category === "Physical" ? colors.PHYSICAL : colors.SPECIAL;
 
@@ -501,6 +518,7 @@ const subtool = {
     }
 
     const hasSTAB = species.types.includes(move.type);
+    const rollMultiplier = this.getRollMultiplier();
 
     let powerData = {
       category: move.category,
@@ -512,7 +530,7 @@ const subtool = {
     if (move.basePower === 0) {
       powerData.value = "?";
     } else {
-      let power = attackStat * move.basePower * 0.714;
+      let power = attackStat * move.basePower * rollMultiplier;
       if (hasSTAB) {
         power *= 1.5;
       }
@@ -545,6 +563,7 @@ const subtool = {
     }
 
     const hasSTAB = species.types.includes(move.type);
+    const rollMultiplier = this.getRollMultiplier();
 
     let powerData = {
       category: move.category,
@@ -556,7 +575,7 @@ const subtool = {
     if (actualBasePower === 0) {
       powerData.value = "?";
     } else {
-      let power = attackStat * actualBasePower * 0.714;
+      let power = attackStat * actualBasePower * rollMultiplier;
       if (hasSTAB) {
         power *= 1.5;
       }
@@ -767,7 +786,7 @@ const subtool = {
         if (!powerData) return;
 
         const powerDisplay = this.createPowerDisplayElement(powerData);
-        powerDisplay.textContent = ` (${powerData.value})`;
+        powerDisplay.textContent = ` (${powerData.value}${this.isMinRoll() && powerData.value !== "?" ? MIN_ROLL_SUFFIX : ""})`;
 
         // Add tooltip handlers for battle tooltips
         const powerDataId = this.generateDataId();

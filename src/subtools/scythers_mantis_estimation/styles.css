@@ -93,3 +93,11 @@
 .mantis-container {
   position: relative;
 }
+
+/* Min-roll explanation styles */
+.mantis-tooltip-explanation {
+  color: #888;
+  font-size: 0.9em;
+  margin-top: 5px;
+  margin-bottom: 0;
+}

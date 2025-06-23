@@ -24,6 +24,12 @@
             "default": true
         },
         {
+            "id": "min_roll",
+            "type": "boolean",
+            "title": "Use min-roll power (shows as 3.3m), instead of the default max-roll (shows as 3.3).",
+            "default": false
+        },
+        {
             "id": "physical_color",
             "type": "string",
             "title": "Physical color",
