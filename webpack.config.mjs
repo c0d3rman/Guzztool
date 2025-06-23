@@ -48,6 +48,10 @@ const exportForTarget = BUILD_TARGET => {
             // so we create this and webpack-remove-empty-scripts deletes it
             outputName: 'STYLES_DUMMY_DELETE_ME',
         },
+        { // Special JS files that need SUBTOOLS data
+            entryFiles: ['./src/options/subtools-data.js'],
+            outputName: 'options/subtools-data',
+        },
     ]);
 
     const output = {
