@@ -50,8 +50,8 @@ $(function () {
 
 
     const resize = () => {
-        // Set size of toggle switches based on their parent cells (except in subpage)
-        $(".cell:not(.subpage) .toggle-switch").css("--size", $('.cell').width() / 10 + 'px');
+        // Set size of subtool toggle switches based on their parent cells
+        $(".cell:not(.subpage) .enable-subtool-toggle").css("--size", $('.cell').width() / 10 + 'px');
 
         // Fit titles to their cells (except in subpage)
         const percentWidth = (el) => $(el).width() / $(el).parent().width();
@@ -167,6 +167,33 @@ $(function () {
                         $(this).css(Object.assign({ position: '', top: '', left: '' }, original));
                     }, animationDuration);
                 }, 1);
+            });
+
+            // Add a click handler for the reset button that resets all settings to defaults
+            $(this).find('.reset-button').click(() => {
+                // Get the subtool's default settings from the data
+                const subtoolData = window.SUBTOOLS[subtoolId];
+                if (!subtoolData || !subtoolData.settings) return;
+
+                // Reset each setting to its default value and update storage
+                browser.storage.sync.get('options').then(data => {
+                    subtoolData.settings.forEach(setting => {
+                        const input = $(this).find(`input[name="${setting.id}"]`);
+                        if (input.length > 0) {
+                            if (input.attr('type') === 'checkbox') {
+                                input.prop('checked', setting.default);
+                            } else {
+                                input.val(setting.default);
+                            }
+                            
+                            // Directly update storage
+                            data.options[subtoolId]['subtool_settings'][setting.id] = setting.default;
+                        }
+                    });
+                    
+                    // Save all changes at once
+                    browser.storage.sync.set({ options: data.options });
+                });
             });
         });
     }).on('click', '.toggle-switch', (e) => e.stopPropagation()); // Don't treat a click on the toggle switch as a click on the parent cell

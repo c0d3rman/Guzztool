@@ -1,0 +1,95 @@
+/* Mantis Estimation Tooltip Styles */
+#mantis-tooltip {
+  display: none;
+  position: absolute;
+  background-color: #333;
+  color: white;
+  padding: 8px;
+  padding-right: 28px;
+  border-radius: 4px;
+  z-index: 1000;
+  width: max-content;
+  text-align: left;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Tooltip content styles */
+.mantis-tooltip-icon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
+}
+
+.mantis-tooltip-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.mantis-tooltip-content {
+  margin: 0;
+  font-family: monospace;
+}
+
+/* Bulk display styles */
+.mantis-bulk-display {
+  font-weight: bold;
+  z-index: 1;
+  font-size: 11px;
+}
+
+.mantis-bulk-display[data-bulk-type="physical"],
+.mantis-bulk-display[data-bulk-type="special"] {
+  cursor: help;
+}
+
+/* Power display styles */
+.mantis-power-display {
+  font-weight: bold;
+  font-size: 11px;
+  cursor: help;
+}
+
+/* Teambuilder positioning */
+.teambuilder-bulk {
+  position: absolute;
+  left: 5px;
+}
+
+.teambuilder-power {
+  position: absolute;
+  right: 7px;
+}
+
+.teambuilder-power.first-move {
+  top: 20px;
+}
+
+.teambuilder-power:not(.first-move) {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Battle positioning */
+.battle-bulk {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  z-index: 1;
+}
+
+.battle-power {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+/* Container positioning */
+.mantis-container {
+  position: relative;
+}

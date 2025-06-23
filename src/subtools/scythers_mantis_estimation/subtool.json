@@ -1,0 +1,41 @@
+{
+    "name": "Scyther's Mantis Estimation",
+    "description": "Automatically calculates power and bulk using Mantis Estimation™.",
+    "color": "#4caf50",
+    "icon": "icon.png",
+    "matches": ["*://play.pokemonshowdown.com/*", "*://*.psim.us/*"],
+    "content_scripts": ["content.js"],
+    "settings": [
+        {
+            "id": "explanation",
+            "type": "custom",
+            "title": "About Mantis Estimation™"
+        },
+        {
+            "id": "show_bulk",
+            "type": "boolean",
+            "title": "Show bulk values",
+            "default": true
+        },
+        {
+            "id": "show_power",
+            "type": "boolean",
+            "title": "Show power values",
+            "default": true
+        },
+        {
+            "id": "physical_color",
+            "type": "string",
+            "title": "Physical color",
+            "default": "#d32f2f",
+            "additional_properties": "type=\"color\""
+        },
+        {
+            "id": "special_color",
+            "type": "string",
+            "title": "Special color",
+            "default": "#1976d2",
+            "additional_properties": "type=\"color\""
+        }
+    ]
+} 

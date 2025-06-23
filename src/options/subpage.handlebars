@@ -1,13 +1,16 @@
 <div class="subpage-content hide">
-    <button class="back-button">Back</button>
+    <div class="subpage-header">
+        <button class="back-button">Back</button>
+        <button class="reset-button">Reset to Default</button>
+    </div>
     <h2>{{description}}</h2><br>
     {{#each settings}}
     <div class="setting">
         {{#if (eq this.type "string")}}
-        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" type="text" {{{this.additional_properties}}}>
+        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" {{{this.additional_properties}}} type="text">
         <label for="setting-{{../id}}-{{this.id}}">{{this.title}}</label>
         {{else if (eq this.type "number")}}
-        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" type="number" {{{this.additional_properties}}}>
+        <input id="setting-{{../id}}-{{this.id}}" name="{{this.id}}" {{{this.additional_properties}}} type="number">
         <label for="setting-{{../id}}-{{this.id}}">{{this.title}}</label>
         {{else if (eq this.type "boolean")}}
         {{> static/lib/toggle_switch size="10px" input_name=id style="display: inline-block" }}
