@@ -110,6 +110,15 @@
   margin-bottom: 0;
 }
 
+/* Example styles */
+.mantis-tooltip-example {
+  color: #aaaaaa;
+  font-size: 0.9em;
+  margin-top: 5px;
+  margin-bottom: 0;
+  font-weight: bold;
+}
+
 /* Shrink the ability columns in the pokemon search to fit the new bulk columns */
 .utilichart:has(.mantis-pbulkcol) .mantis-pbulkcol,
 .utilichart:has(.mantis-sbulkcol) .mantis-sbulkcol,

@@ -91,6 +91,14 @@ const subtool = {
   getBulkTooltipHTML: function (type, bulkData) {
     const statName = type === "physical" ? "Def" : "SpD";
     const statValue = type === "physical" ? bulkData.def : bulkData.spd;
+    
+    const bulkValue = parseFloat(bulkData.value);
+    const powerValue = 4.0;
+    const percent = Math.round((powerValue / bulkValue) * 100);
+    const color = type === "physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
+    const rollType = this.isMinRoll() ? "min roll" : "max roll";
+    const powerSuffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
+    const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${
@@ -99,6 +107,7 @@ const subtool = {
       <p class="mantis-tooltip-content">(${
         bulkData.hp
       } HP * ${statValue} ${statName}) / 10000 ≈ ${bulkData.value}</p>
+      <p class="mantis-tooltip-example">${exampleText}</p>
     `;
   },
 
@@ -120,10 +129,18 @@ const subtool = {
     const minRollExplanation = this.isMinRoll()
       ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>`
       : "";
+    
+    const powerValue = Math.round(powerData.value * 10) / 10;
+    const percent = Math.round((powerValue / 10.0) * 100);
+    const color = powerData.category === "Physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
+    const rollType = this.isMinRoll() ? "min roll" : "max roll";
+    const exampleText = `e.g. <span style="color: ${color}">${powerData.value}${suffix}</span> power vs. <span style="color: ${color}">10.0</span> bulk → ${percent}% ${rollType}`;
+    
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${typeDisplay} Power</h4>
       <p class="mantis-tooltip-content">(${powerData.attackStat} ${attackStatName} * ${powerData.basePower} BP${stabMultiplier}) * ${rollMultiplier} / 10000 ≈ ${powerData.value}${suffix}</p>
+      <p class="mantis-tooltip-example">${exampleText}</p>
       ${minRollExplanation}
     `;
   },
