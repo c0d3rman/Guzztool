@@ -36,6 +36,12 @@
             "default": true
         },
         {
+            "id": "show_modified_stats_in_battle",
+            "type": "boolean",
+            "title": "Show modified stats in battle (includes stat boosts, items, etc.)",
+            "default": true
+        },
+        {
             "id": "min_roll",
             "type": "boolean",
             "title": "Use min-roll power (shows as 3.3m), instead of the default max-roll (shows as 3.3).",

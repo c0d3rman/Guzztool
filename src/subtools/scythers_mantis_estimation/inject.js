@@ -67,6 +67,10 @@ const subtool = {
     return this.options?.show_bulk_in_search !== false;
   },
 
+  shouldShowModifiedStatsInBattle: function () {
+    return this.options?.show_modified_stats_in_battle === true;
+  },
+
   getRollMultiplier: function () {
     return this.options?.min_roll ? 0.714 : 0.84;
   },
@@ -523,7 +527,7 @@ const subtool = {
 
       if (move && move.category !== "Status") {
         const powerData = this.calculateMovePower(
-          room.curSet,
+          { pokemonSet: room.curSet },
           move,
           species,
           room.curTeam.dex
@@ -595,8 +599,10 @@ const subtool = {
 
       const bulkValues = this.calculateBulkValues(
         {
-          species: species.id,
-          moves: [],
+          pokemonSet: {
+            species: species.id,
+            moves: [],
+          },
         },
         species,
         room.curTeam.dex
@@ -664,7 +670,7 @@ const subtool = {
     let existingBulk = statsButton.querySelector(".mantis-bulk-display");
     if (existingBulk) existingBulk.remove();
 
-    const bulkValues = this.calculateBulkValues(set, species, dex);
+    const bulkValues = this.calculateBulkValues({ pokemonSet: set }, species, dex);
     const bulkElement = this.createBulkDisplayElement(bulkValues);
     bulkElement.classList.add("teambuilder-bulk");
 
@@ -682,7 +688,7 @@ const subtool = {
       const move = dex.moves.get(moveName);
       if (!move) return;
 
-      const powerData = this.calculateMovePower(set, move, species, dex);
+      const powerData = this.calculateMovePower({ pokemonSet: set }, move, species, dex);
       if (!powerData) return;
 
       this.addPowerDisplayToInput(input, powerData, index, isTeamList);
@@ -764,126 +770,79 @@ const subtool = {
     return display;
   },
 
-  calculateBulkValues: function (pokemon, species, dex) {
-    // Get stats - use actual stats from Pokemon object in battle rooms
-    let hp, def, spd;
-    if (pokemon.stats) {
-      // Battle room - use actual stats
-      hp = pokemon.maxhp || pokemon.stats.hp;
-      def = pokemon.stats.def;
-      spd = pokemon.stats.spd;
-    } else {
-      // Teambuilder room - use room.getStat
-      hp = room.getStat("hp", pokemon);
-      def = room.getStat("def", pokemon);
-      spd = room.getStat("spd", pokemon);
-    }
+  calculateBulkValues: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
+    const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+    const hp = stats.hp;
+    const def = stats.def;
+    const spd = stats.spd;
 
-    // Apply item effects
-    if (pokemon.item) {
-      const item = dex.items.get(pokemon.item);
-      if (item) {
-        if (item.id === "assaultvest") {
-          spd = Math.floor(spd * 1.5);
-        } else if (item.id === "eviolite" && species.nfe) {
-          def = Math.floor(def * 1.5);
-          spd = Math.floor(spd * 1.5);
+    // Apply item effects only if not using modified stats
+    let finalDef = def;
+    let finalSpd = spd;
+    
+    const item = serverPokemon?.item || clientPokemon?.item || pokemonSet?.item;
+    if (item && !this.shouldShowModifiedStatsInBattle()) {
+      const itemData = dex.items.get(item);
+      if (itemData) {
+        if (itemData.id === "assaultvest") {
+          finalSpd = Math.floor(spd * 1.5);
+        } else if (itemData.id === "eviolite" && species.nfe) {
+          finalDef = Math.floor(def * 1.5);
+          finalSpd = Math.floor(spd * 1.5);
         }
       }
     }
 
-    const physicalBulk = this.formatValue(hp * def);
-    const specialBulk = this.formatValue(hp * spd);
+    const physicalBulk = this.formatValue(hp * finalDef);
+    const specialBulk = this.formatValue(hp * finalSpd);
 
     return {
       physical: {
         value: physicalBulk,
         hp: hp,
-        def: def,
+        def: finalDef,
       },
       special: {
         value: specialBulk,
         hp: hp,
-        spd: spd,
+        spd: finalSpd,
       },
     };
   },
 
-  calculateMovePower: function (pokemon, move, species, dex) {
+  calculateMovePower: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex) {
     if (move.category === "Status") {
       return null;
     }
 
     const isPhysical = move.category === "Physical";
-
-    // In battle rooms, use actual stats from the Pokemon object
-    let attackStat;
-    if (pokemon.stats) {
-      // Battle room - use actual stats
-      attackStat = pokemon.stats[isPhysical ? "atk" : "spa"];
-    } else {
-      // Teambuilder room - use room.getStat
-      attackStat = room.getStat(isPhysical ? "atk" : "spa", pokemon);
-    }
-
+    const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+    const attackStat = isPhysical ? stats.atk : stats.spa;
     const hasSTAB = species.types.includes(move.type);
     const rollMultiplier = this.getRollMultiplier();
 
-    let powerData = {
-      category: move.category,
-      attackStat: attackStat,
-      basePower: move.basePower,
-      hasSTAB: hasSTAB,
-    };
+    // Determine base power
+    let basePower = move.basePower;
+    if (room.battle && clientPokemon && serverPokemon) {
+      const tooltipText = room.battle.scene.tooltips.showMoveTooltip(move, "", clientPokemon, serverPokemon);
+      const basePowerMatch = tooltipText.match(/Base power: (\d+)/);
+      if (basePowerMatch) {
+        basePower = parseInt(basePowerMatch[1]);
+      }
+    }
 
-    let power = attackStat * move.basePower * rollMultiplier;
+    let power = attackStat * basePower * rollMultiplier;
     if (hasSTAB) {
       power *= 1.5;
     }
-    powerData.value = this.formatValue(power, move.basePower);
 
-    return powerData;
-  },
-
-  calculateMovePowerWithBasePower: function (
-    pokemon,
-    move,
-    species,
-    actualBasePower
-  ) {
-    if (move.category === "Status") {
-      return null;
-    }
-
-    const isPhysical = move.category === "Physical";
-
-    // In battle rooms, use actual stats from the Pokemon object
-    let attackStat;
-    if (pokemon.stats) {
-      // Battle room - use actual stats
-      attackStat = pokemon.stats[isPhysical ? "atk" : "spa"];
-    } else {
-      // Teambuilder room - use room.getStat
-      attackStat = room.getStat(isPhysical ? "atk" : "spa", pokemon);
-    }
-
-    const hasSTAB = species.types.includes(move.type);
-    const rollMultiplier = this.getRollMultiplier();
-
-    let powerData = {
+    return {
       category: move.category,
       attackStat: attackStat,
-      basePower: actualBasePower,
+      basePower: basePower,
       hasSTAB: hasSTAB,
+      value: this.formatValue(power, basePower),
     };
-
-    let power = attackStat * actualBasePower * rollMultiplier;
-    if (hasSTAB) {
-      power *= 1.5;
-    }
-    powerData.value = this.formatValue(power, actualBasePower);
-
-    return powerData;
   },
 
   updateBattleMoveDisplays: function (room) {
@@ -944,26 +903,12 @@ const subtool = {
         ];
       if (!pokemon) return;
 
-      // Use the battle's tooltip system to get the actual base power
-      const tooltipText = battle.scene.tooltips.showMoveTooltip(
-        move,
-        "",
-        pokemon,
-        activePokemon
-      );
-
-      // Parse the tooltip text to extract base power
-      const basePowerMatch = tooltipText.match(/Base power: (\d+)/);
-      if (!basePowerMatch) return;
-
-      const actualBasePower = parseInt(basePowerMatch[1]);
-
       // Calculate power using the actual base power
-      const powerData = this.calculateMovePowerWithBasePower(
-        activePokemon,
+      const powerData = this.calculateMovePower(
+        { clientPokemon: pokemon, serverPokemon: activePokemon },
         move,
         species,
-        actualBasePower
+        battle.dex
       );
       if (!powerData) return;
 
@@ -985,74 +930,95 @@ const subtool = {
   modifyTooltipContent: function (room) {
     if (!this.shouldShowPower() && !this.shouldShowBulk()) return;
 
-    this.log.debug("Modifying Pokemon tooltip content");
-
     const tooltipWrapper = document.getElementById("tooltipwrapper");
+    const tooltipBody = tooltipWrapper?.querySelector(".tooltipinner .tooltip");
+    if (!tooltipBody) return;
+
     const args = document
       .querySelector("[data-tooltip]:hover")
       .dataset.tooltip.split("|");
     const type = args[0];
+    let clientPokemon = null;
     let serverPokemon = null;
     const battle = room.battle;
 
     if (type === "switchpokemon") {
       // switchpokemon|POKEMON
+      // serverPokemon definitely exists, clientPokemon maybe
       const pokemonIndex = parseInt(args[1], 10);
       serverPokemon = battle.myPokemon[pokemonIndex];
+      
+      // Try to get client Pokemon if available
+      if (pokemonIndex < battle.mySide.active.length && pokemonIndex < battle.pokemonControlled) {
+        clientPokemon = battle.mySide.active[pokemonIndex];
+        if (clientPokemon && clientPokemon.side === battle.mySide.ally) {
+          clientPokemon = null;
+        }
+      }
     } else if (type === "activepokemon") {
       // activepokemon|SIDE|ACTIVE
+      // clientPokemon definitely exists, serverPokemon maybe
       const sideIndex = parseInt(args[1], 10);
+      const side = battle.sides[+battle.viewpointSwitched ^ sideIndex];
       const activeIndex = parseInt(args[2], 10);
       let pokemonIndex = activeIndex;
-
+      
       if (activeIndex >= 1 && battle.sides.length > 2) {
         pokemonIndex -= 1;
+        const newSide = battle.sides[side.n + 2];
+        clientPokemon = newSide.active[activeIndex];
+      } else {
+        clientPokemon = side.active[activeIndex];
       }
-
-      const side = battle.sides[+battle.viewpointSwitched ^ sideIndex];
+      
+      // Get serverPokemon if it's our side
       if (side === battle.mySide && battle.myPokemon) {
         serverPokemon = battle.myPokemon[pokemonIndex];
+      } else if (side === battle.mySide.ally && battle.myAllyPokemon) {
+        serverPokemon = battle.myAllyPokemon[pokemonIndex];
       }
     } else if (type === "pokemon") {
       // pokemon|SIDE|POKEMON
+      // clientPokemon definitely exists, serverPokemon always ignored
       const sideIndex = parseInt(args[1], 10);
-      const pokemonIndex = parseInt(args[2], 10);
       const side = battle.sides[sideIndex];
-
-      if (side === battle.mySide && battle.myPokemon) {
-        serverPokemon = battle.myPokemon[pokemonIndex];
-      }
+      const pokemonIndex = parseInt(args[2], 10);
+      clientPokemon = side.pokemon[pokemonIndex];
+      
+      // For pokemon tooltips, we don't have serverPokemon data
+      // We'll use the clientPokemon stats directly
     } else {
       return;
     }
 
-    this.log.debug(`Pokemon data for tooltip type: ${type}`, serverPokemon);
+    this.log.debug(`Pokemon data for tooltip type: ${type}`, { clientPokemon, serverPokemon });
 
-    // Get species data
-    const species = battle.dex.species.get(serverPokemon.speciesForme);
+    // Get species data from clientPokemon if available, otherwise from serverPokemon
+    const speciesName = clientPokemon?.speciesForme || serverPokemon?.speciesForme;
+    if (!speciesName) return;
+    
+    const species = battle.dex.species.get(speciesName);
+    if (!species) return;
 
     // Add bulk display to top right of tooltip
     if (this.shouldShowBulk()) {
       const bulkValues = this.calculateBulkValues(
-        serverPokemon,
+        { clientPokemon, serverPokemon },
         species,
         battle.dex
       );
+      this.log.debug(`Bulk values: ${JSON.stringify(bulkValues)}`);
       const bulkElement = this.createBulkDisplayElement(bulkValues);
       bulkElement.classList.add("battle-bulk");
 
       this.addTooltipHandlers(bulkElement, bulkValues, false);
 
-      tooltipWrapper
-        .querySelector(".tooltipinner .tooltip")
-        .appendChild(bulkElement);
+      tooltipBody.appendChild(bulkElement);
     }
 
     // Add power values to moves
     if (this.shouldShowPower()) {
-      const moveElements = tooltipWrapper.querySelectorAll(
-        ".tooltipinner .tooltip br"
-      );
+      const moveElements = tooltipBody.querySelectorAll("br");
       moveElements.forEach((br) => {
         const textNode = br.previousSibling;
         if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
@@ -1063,11 +1029,11 @@ const subtool = {
         const move = battle.dex.moves.get(moveText.substring(2));
         if (!move || move.category === "Status") return;
 
-        const powerData = this.calculateMovePowerWithBasePower(
-          serverPokemon,
+        const powerData = this.calculateMovePower(
+          { clientPokemon, serverPokemon },
           move,
           species,
-          move.basePower
+          battle.dex
         );
         if (!powerData) return;
 
@@ -1118,6 +1084,55 @@ const subtool = {
         window.GuzztoolMantis.hideTooltip();
       };
     }
+  },
+
+  getStats: function ({ pokemonSet, serverPokemon, clientPokemon }) {
+    // If we're in battle and the setting is enabled, use modified stats
+    if (this.shouldShowModifiedStatsInBattle() && room.battle && serverPokemon) {
+      const modifiedStats = room.battle.scene.tooltips.calculateModifiedStats(clientPokemon, serverPokemon);
+      this.log.debug(`Modified stats: ${JSON.stringify(modifiedStats)}`);
+      return {
+        hp: serverPokemon.maxhp,
+        atk: modifiedStats.atk,
+        def: modifiedStats.def,
+        spa: modifiedStats.spa,
+        spd: modifiedStats.spd,
+      };
+    }
+    
+    // Use raw stats from available sources
+    if (serverPokemon?.stats) {
+      return {
+        hp: serverPokemon.maxhp,
+        atk: serverPokemon.stats.atk,
+        def: serverPokemon.stats.def,
+        spa: serverPokemon.stats.spa,
+        spd: serverPokemon.stats.spd,
+      };
+    }
+    
+    if (clientPokemon?.stats) {
+      return {
+        hp: clientPokemon.maxhp,
+        atk: clientPokemon.stats.atk,
+        def: clientPokemon.stats.def,
+        spa: clientPokemon.stats.spa,
+        spd: clientPokemon.stats.spd,
+      };
+    }
+    
+    // In teambuilder, use room.getStat and the PokemonSet
+    if (pokemonSet && room.getStat) {
+      return {
+        hp: room.getStat("hp", pokemonSet),
+        atk: room.getStat("atk", pokemonSet),
+        def: room.getStat("def", pokemonSet),
+        spa: room.getStat("spa", pokemonSet),
+        spd: room.getStat("spd", pokemonSet),
+      };
+    }
+    
+    throw new Error(`No stats available - ${pokemonSet} ${serverPokemon} ${clientPokemon}`);
   },
 };
 
