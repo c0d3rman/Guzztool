@@ -1,6 +1,7 @@
 /* This script is injected into the page by contentScript.js and can access page variables. */
 
 import { RoomListener } from '@guzztool/util/RoomListener';
+import { FunctionListenerProxy } from '@guzztool/util/ListenerProxy';
 import log from '@guzztool/util/log';
 import * as messaging from "webext-bridge/window";
 import {doesUrlMatchPatterns, assertValidPattern} from 'webext-patterns';
@@ -56,6 +57,45 @@ try {
             log.error(e);
         }
     })();
+
+    // Proxy OptionsPopup.prototype.update to add Guzztool settings button
+    const optionsUpdateProxy = new FunctionListenerProxy(
+        OptionsPopup.prototype.update,
+        (originalFn, ...args) => {
+            const result = originalFn(...args);
+            
+            // Add Guzztool settings button before the avatars button
+            const avatarsButton = document.querySelector('button[name="avatars"]');
+            if (avatarsButton && !document.querySelector('button[name="guzztoolsettings"]')) {
+                const guzztoolButton = document.createElement('button');
+                guzztoolButton.name = 'guzztoolsettings';
+                guzztoolButton.className = 'button';
+                guzztoolButton.innerHTML = '<i class="fa fa-cog"></i> Guzztool settings';
+                
+                // Create a p element to wrap the button (matching the HTML structure)
+                const buttonParagraph = document.createElement('p');
+                buttonParagraph.appendChild(guzztoolButton);
+                
+                // Insert before the avatars button's parent p element
+                const avatarsParagraph = avatarsButton.parentNode;
+                avatarsParagraph.parentNode.insertBefore(buttonParagraph, avatarsParagraph);
+                
+                // Add click handler to open options page
+                guzztoolButton.addEventListener('click', async (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    try {
+                        await messaging.sendMessage("openOptionsPage", {}, "background");
+                    } catch (e) {
+                        console.error('Failed to open Guzztool settings:', e);
+                    }
+                });
+            }
+            
+            return result;
+        }
+    );
+    OptionsPopup.prototype.update = optionsUpdateProxy.proxy;
 } catch (e) {
     log.error(e);
 }

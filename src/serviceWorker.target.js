@@ -45,6 +45,10 @@ try {
         }
     });
 
+    // Open options page
+    messaging.onMessage("openOptionsPage", async () => {
+        return await browser.runtime.openOptionsPage();
+    });
 
     // Debug mode
     browser.storage.sync.onChanged.addListener((changes) => {
