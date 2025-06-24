@@ -520,17 +520,7 @@ const subtool = {
             powerData.category === "Physical"
               ? "physical-power"
               : "special-power";
-          const powerDataId = this.generateDataId();
-          this.tooltipData[powerDataId] = powerData;
-
-          powerDisplay.onmouseover = (event) => {
-            event.stopPropagation();
-            window.GuzztoolMantis.showTooltip(event, type, powerDataId);
-          };
-          powerDisplay.onmouseout = (event) => {
-            event.stopPropagation();
-            window.GuzztoolMantis.hideTooltip();
-          };
+          this.addTooltipToElement(powerDisplay, type, powerData);
 
           estCol.appendChild(document.createElement("em"));
           estCol.appendChild(document.createElement("br"));
@@ -605,17 +595,7 @@ const subtool = {
       pBulkDisplay.classList.add("pokemon-search-bulk");
 
       // Add tooltip handlers for physical bulk
-      const pBulkDataId = this.generateDataId();
-      this.tooltipData[pBulkDataId] = bulkValues.physical;
-
-      pBulkDisplay.onmouseover = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.showTooltip(event, "physical-bulk", pBulkDataId);
-      };
-      pBulkDisplay.onmouseout = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.hideTooltip();
-      };
+      this.addTooltipToElement(pBulkDisplay, "physical-bulk", bulkValues.physical);
 
       const pbEm = document.createElement("em");
       pbEm.textContent = "PB";
@@ -633,17 +613,7 @@ const subtool = {
       sBulkDisplay.classList.add("pokemon-search-bulk");
 
       // Add tooltip handlers for special bulk
-      const sBulkDataId = this.generateDataId();
-      this.tooltipData[sBulkDataId] = bulkValues.special;
-
-      sBulkDisplay.onmouseover = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.showTooltip(event, "special-bulk", sBulkDataId);
-      };
-      sBulkDisplay.onmouseout = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.hideTooltip();
-      };
+      this.addTooltipToElement(sBulkDisplay, "special-bulk", bulkValues.special);
 
       const sbEm = document.createElement("em");
       sbEm.textContent = "SB";
@@ -721,28 +691,7 @@ const subtool = {
     // Add tooltip handlers
     const type =
       powerData.category === "Physical" ? "physical-power" : "special-power";
-    const powerDataId = this.generateDataId();
-    this.tooltipData[powerDataId] = powerData;
-
-    if (isTeamList) {
-      display.setAttribute(
-        "onmouseover",
-        `event.stopPropagation(); window.GuzztoolMantis.showTooltip(event, '${type}', '${powerDataId}')`
-      );
-      display.setAttribute(
-        "onmouseout",
-        `event.stopPropagation(); window.GuzztoolMantis.hideTooltip()`
-      );
-    } else {
-      display.onmouseover = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.showTooltip(event, type, powerDataId);
-      };
-      display.onmouseout = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.hideTooltip();
-      };
-    }
+    this.addTooltipToElement(display, type, powerData, isTeamList);
 
     parentCell.appendChild(display);
   },
@@ -751,54 +700,12 @@ const subtool = {
     const physBulkSpan = bulkElement.querySelector(
       '[data-bulk-type="physical"]'
     );
-    const physDataId = this.generateDataId();
-    this.tooltipData[physDataId] = bulkValues.physical;
-
-    if (isTeamList) {
-      physBulkSpan.setAttribute(
-        "onmouseover",
-        `event.stopPropagation(); window.GuzztoolMantis.showTooltip(event, 'physical-bulk', '${physDataId}')`
-      );
-      physBulkSpan.setAttribute(
-        "onmouseout",
-        `event.stopPropagation(); window.GuzztoolMantis.hideTooltip()`
-      );
-    } else {
-      physBulkSpan.onmouseover = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.showTooltip(event, "physical-bulk", physDataId);
-      };
-      physBulkSpan.onmouseout = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.hideTooltip();
-      };
-    }
+    this.addTooltipToElement(physBulkSpan, "physical-bulk", bulkValues.physical, isTeamList);
 
     const specBulkSpan = bulkElement.querySelector(
       '[data-bulk-type="special"]'
     );
-    const specDataId = this.generateDataId();
-    this.tooltipData[specDataId] = bulkValues.special;
-
-    if (isTeamList) {
-      specBulkSpan.setAttribute(
-        "onmouseover",
-        `event.stopPropagation(); window.GuzztoolMantis.showTooltip(event, 'special-bulk', '${specDataId}')`
-      );
-      specBulkSpan.setAttribute(
-        "onmouseout",
-        `event.stopPropagation(); window.GuzztoolMantis.hideTooltip()`
-      );
-    } else {
-      specBulkSpan.onmouseover = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.showTooltip(event, "special-bulk", specDataId);
-      };
-      specBulkSpan.onmouseout = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.hideTooltip();
-      };
-    }
+    this.addTooltipToElement(specBulkSpan, "special-bulk", bulkValues.special, isTeamList);
   },
 
   createBulkDisplayElement: function (bulkValues) {
@@ -1050,23 +957,8 @@ const subtool = {
       powerDisplay.classList.add("battle-power");
 
       // Add tooltip handlers for battle displays
-      const powerDataId = this.generateDataId();
-      this.tooltipData[powerDataId] = powerData;
-
-      powerDisplay.onmouseover = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.showTooltip(
-          event,
-          powerData.category === "Physical"
-            ? "physical-power"
-            : "special-power",
-          powerDataId
-        );
-      };
-      powerDisplay.onmouseout = (event) => {
-        event.stopPropagation();
-        window.GuzztoolMantis.hideTooltip();
-      };
+      const type = powerData.category === "Physical" ? "physical-power" : "special-power";
+      this.addTooltipToElement(powerDisplay, type, powerData);
 
       $button.addClass("mantis-container");
       $button.append(powerDisplay);
@@ -1166,8 +1058,8 @@ const subtool = {
         powerDisplay.textContent = ` (${powerDisplay.textContent})`;
 
         // Add tooltip handlers for battle tooltips
-        const powerDataId = this.generateDataId();
-        this.tooltipData[powerDataId] = powerData;
+        const type = powerData.category === "Physical" ? "physical-power" : "special-power";
+        this.addTooltipToElement(powerDisplay, type, powerData);
 
         br.parentNode.insertBefore(powerDisplay, br);
       });
@@ -1184,6 +1076,31 @@ const subtool = {
     // Round to 1 decimal place and ensure consistent formatting
     const rounded = Math.round(value / 1000) / 10;
     return rounded.toFixed(1);
+  },
+
+  addTooltipToElement: function (element, type, data, isTeamList = false) {
+    const dataId = this.generateDataId();
+    this.tooltipData[dataId] = data;
+
+    if (isTeamList) {
+      element.setAttribute(
+        "onmouseover",
+        `event.stopPropagation(); window.GuzztoolMantis.showTooltip(event, '${type}', '${dataId}')`
+      );
+      element.setAttribute(
+        "onmouseout",
+        `event.stopPropagation(); window.GuzztoolMantis.hideTooltip()`
+      );
+    } else {
+      element.onmouseover = (event) => {
+        event.stopPropagation();
+        window.GuzztoolMantis.showTooltip(event, type, dataId);
+      };
+      element.onmouseout = (event) => {
+        event.stopPropagation();
+        window.GuzztoolMantis.hideTooltip();
+      };
+    }
   },
 };
 
