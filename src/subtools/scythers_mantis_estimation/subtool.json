@@ -24,6 +24,18 @@
             "default": true
         },
         {
+            "id": "show_power_in_search",
+            "type": "boolean",
+            "title": "Show power values in move search",
+            "default": true
+        },
+        {
+            "id": "show_bulk_in_search",
+            "type": "boolean",
+            "title": "Show bulk values in Pokemon search",
+            "default": true
+        },
+        {
             "id": "min_roll",
             "type": "boolean",
             "title": "Use min-roll power (shows as 3.3m), instead of the default max-roll (shows as 3.3).",

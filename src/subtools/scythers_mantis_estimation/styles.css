@@ -89,6 +89,14 @@
   right: 2px;
 }
 
+/* Move search positioning */
+.move-search-power {
+  display: inline-block;
+  margin-left: 0;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
 /* Container positioning */
 .mantis-container {
   position: relative;
@@ -100,4 +108,19 @@
   font-size: 0.9em;
   margin-top: 5px;
   margin-bottom: 0;
+}
+
+/* Shrink the ability columns in the pokemon search to fit the new bulk columns */
+.utilichart:has(.mantis-pbulkcol) .mantis-pbulkcol,
+.utilichart:has(.mantis-sbulkcol) .mantis-sbulkcol,
+.utilichart:has(.mantis-pbulksortcol) .mantis-pbulksortcol,
+.utilichart:has(.mantis-sbulksortcol) .mantis-sbulksortcol {
+  width: 20px;
+}
+.utilichart:has(.mantis-pbulkcol) .twoabilitycol,
+.utilichart:has(.mantis-pbulkcol) .abilitycol {
+  width: 66px; /* Instead of 86px */
+}
+.utilichart:has(.mantis-pbulksortcol) .abilitysortcol {
+  width: 132px; /* Instead of 172px */
 }

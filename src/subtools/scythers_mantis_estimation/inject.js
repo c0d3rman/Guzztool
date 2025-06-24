@@ -59,6 +59,14 @@ const subtool = {
     return this.options?.show_power !== false;
   },
 
+  shouldShowPowerInSearch: function () {
+    return this.options?.show_power_in_search !== false;
+  },
+
+  shouldShowBulkInSearch: function () {
+    return this.options?.show_bulk_in_search !== false;
+  },
+
   getRollMultiplier: function () {
     return this.options?.min_roll ? 0.714 : 0.84;
   },
@@ -109,7 +117,9 @@ const subtool = {
     const stabMultiplier = powerData.hasSTAB ? " * 1.5" : "";
     const rollMultiplier = this.getRollMultiplier();
     const suffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
-    const minRollExplanation = this.isMinRoll() ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>` : '';
+    const minRollExplanation = this.isMinRoll()
+      ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>`
+      : "";
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${typeDisplay} Power</h4>
@@ -198,6 +208,191 @@ const subtool = {
       }
     );
     room.updateSetView = updateSetViewProxy.proxy;
+
+    // Proxy for BattleSearch.updateScroll to add power displays to move search and bulk displays to pokemon search
+    const updateScrollProxy = new FunctionListenerProxy(
+      BattleSearch.prototype.updateScroll,
+      (originalFn, ...args) => {
+        this.log.debug("BattleSearch.updateScroll called");
+        const result = originalFn(...args);
+        if (room.curChartType === "move") {
+          this.updateMoveSearchDisplays(room);
+        } else if (room.curChartType === "pokemon") {
+          this.updatePokemonSearchDisplays(room);
+        }
+        return result;
+      }
+    );
+    BattleSearch.prototype.updateScroll = updateScrollProxy.proxy;
+
+    // Proxy for BattleSearch.sort to add support for sorting by power values
+    const sortProxy = new FunctionListenerProxy(
+      BattleMoveSearch.prototype.sort,
+      (originalFn, results, sortCol, reverseSort) => {
+        // Handle power sorting
+        if (sortCol === "mantispow") {
+          this.log.debug("Sorting by mantis power");
+
+          const sortOrder = reverseSort ? -1 : 1;
+          return results.sort(([rowType1, id1], [rowType2, id2]) => {
+            // For moves, calculate power based on current Pokemon set
+            if (rowType1 === "move" && rowType2 === "move") {
+              if (!room.curSet) return 0;
+
+              const species = room.curTeam.dex.species.get(room.curSet.species);
+              if (!species) return 0;
+
+              const move1 = room.curTeam.dex.moves.get(id1);
+              const move2 = room.curTeam.dex.moves.get(id2);
+
+              if (!move1 || !move2) return 0;
+
+              // Handle status moves (lowest priority)
+              if (move1.category === "Status" && move2.category === "Status")
+                return 0;
+              if (move1.category === "Status") return sortOrder;
+              if (move2.category === "Status") return -sortOrder;
+
+              const powerData1 = this.calculateMovePower(
+                room.curSet,
+                move1,
+                species,
+                room.curTeam.dex
+              );
+              const powerData2 = this.calculateMovePower(
+                room.curSet,
+                move2,
+                species,
+                room.curTeam.dex
+              );
+
+              // Handle variable power moves (?) - middle priority
+              const isVariable1 = !powerData1 || powerData1.value === "?";
+              const isVariable2 = !powerData2 || powerData2.value === "?";
+
+              if (isVariable1 && isVariable2) return 0;
+              if (isVariable1) return sortOrder;
+              if (isVariable2) return -sortOrder;
+
+              // Handle regular power moves (highest priority)
+              if (!powerData1) return sortOrder;
+              if (!powerData2) return -sortOrder;
+
+              const power1 = parseFloat(powerData1.value);
+              const power2 = parseFloat(powerData2.value);
+
+              // Handle NaN values (shouldn't happen but just in case)
+              if (isNaN(power1) && isNaN(power2)) return 0;
+              if (isNaN(power1)) return sortOrder;
+              if (isNaN(power2)) return -sortOrder;
+
+              return (power2 - power1) * sortOrder;
+            }
+
+            // For non-move rows, fall back to original sorting
+            return 0;
+          });
+        }
+
+        // Call original function for all other sort columns
+        return originalFn(results, sortCol, reverseSort);
+      }
+    );
+    BattleMoveSearch.prototype.sort = sortProxy.proxy;
+
+    // Proxy for BattlePokemonSearch.sort to add support for sorting by bulk values
+    const pokemonSortProxy = new FunctionListenerProxy(
+      BattlePokemonSearch.prototype.sort,
+      (originalFn, results, sortCol, reverseSort) => {
+        // Handle physical bulk sorting
+        if (sortCol === "mantispbulk") {
+          this.log.debug("Sorting by mantis physical bulk");
+          const sortOrder = reverseSort ? -1 : 1;
+          return results.sort(([rowType1, id1], [rowType2, id2]) => {
+            if (rowType1 === "pokemon" && rowType2 === "pokemon") {
+              if (!room.curSet) return 0;
+
+              const species1 = room.curTeam.dex.species.get(id1);
+              const species2 = room.curTeam.dex.species.get(id2);
+
+              if (!species1 || !species2) return 0;
+
+              // Create temporary sets for bulk calculation
+              const tempSet1 = { species: id1, moves: [] };
+              const tempSet2 = { species: id2, moves: [] };
+
+              const bulkData1 = this.calculateBulkValues(
+                tempSet1,
+                species1,
+                room.curTeam.dex
+              );
+              const bulkData2 = this.calculateBulkValues(
+                tempSet2,
+                species2,
+                room.curTeam.dex
+              );
+
+              const bulk1 = parseFloat(bulkData1.physical.value);
+              const bulk2 = parseFloat(bulkData2.physical.value);
+
+              // Handle NaN values (shouldn't happen but just in case)
+              if (isNaN(bulk1) && isNaN(bulk2)) return 0;
+              if (isNaN(bulk1)) return sortOrder;
+              if (isNaN(bulk2)) return -sortOrder;
+
+              return (bulk2 - bulk1) * sortOrder;
+            }
+            return 0;
+          });
+        }
+
+        // Handle special bulk sorting
+        if (sortCol === "mantissbulk") {
+          this.log.debug("Sorting by mantis special bulk");
+          const sortOrder = reverseSort ? -1 : 1;
+          return results.sort(([rowType1, id1], [rowType2, id2]) => {
+            if (rowType1 === "pokemon" && rowType2 === "pokemon") {
+              if (!room.curSet) return 0;
+
+              const species1 = room.curTeam.dex.species.get(id1);
+              const species2 = room.curTeam.dex.species.get(id2);
+
+              if (!species1 || !species2) return 0;
+
+              // Create temporary sets for bulk calculation
+              const tempSet1 = { species: id1, moves: [] };
+              const tempSet2 = { species: id2, moves: [] };
+
+              const bulkData1 = this.calculateBulkValues(
+                tempSet1,
+                species1,
+                room.curTeam.dex
+              );
+              const bulkData2 = this.calculateBulkValues(
+                tempSet2,
+                species2,
+                room.curTeam.dex
+              );
+
+              const bulk1 = parseFloat(bulkData1.special.value);
+              const bulk2 = parseFloat(bulkData2.special.value);
+
+              // Handle NaN values (shouldn't happen but just in case)
+              if (isNaN(bulk1) && isNaN(bulk2)) return 0;
+              if (isNaN(bulk1)) return sortOrder;
+              if (isNaN(bulk2)) return -sortOrder;
+
+              return (bulk2 - bulk1) * sortOrder;
+            }
+            return 0;
+          });
+        }
+
+        // Call original function for all other sort columns
+        return originalFn(results, sortCol, reverseSort);
+      }
+    );
+    BattlePokemonSearch.prototype.sort = pokemonSortProxy.proxy;
   },
 
   initBattle: function (room) {
@@ -259,6 +454,207 @@ const subtool = {
         room.curTeam.dex,
         true
       );
+    });
+  },
+
+  updateMoveSearchDisplays: function (room) {
+    if (!this.shouldShowPowerInSearch()) return;
+    if (!room.curSet) return;
+
+    this.log.debug("Updating move search displays");
+
+    const species = room.curTeam.dex.species.get(room.curSet.species);
+    if (!species) return;
+
+    // Find all move entries in the search results
+    const moveEntries = room.el.querySelectorAll(
+      '.teambuilder-results .result a[data-entry^="move|"]'
+    );
+
+    // Add header for the new column if not present
+    const headerRow = room.el.querySelector(".teambuilder-results .sortrow");
+    if (headerRow && !headerRow.querySelector(".mantis-estpowercol")) {
+      const powerHeader = headerRow.querySelector(".powersortcol");
+      if (powerHeader) {
+        const estHeader = document.createElement("button");
+        estHeader.className = "sortcol mantis-estpowercol powersortcol";
+        estHeader.setAttribute("data-sort", "mantispow");
+        estHeader.innerHTML = "MPow";
+        powerHeader.insertAdjacentElement("afterend", estHeader);
+      }
+    }
+
+    moveEntries.forEach((entry) => {
+      // Remove any existing power columns
+      const existingDisplay = entry.querySelector(".mantis-estpowercol");
+      if (existingDisplay) {
+        existingDisplay.remove();
+      }
+
+      // Always insert a blank col for spacing
+      const estCol = document.createElement("span");
+      estCol.className = "col labelcol mantis-estpowercol";
+
+      // Extract move name from data-entry attribute
+      const dataEntry = entry.getAttribute("data-entry");
+      if (!dataEntry) return;
+
+      const moveName = dataEntry.split("|")[1];
+      if (!moveName) return;
+
+      const move = room.curTeam.dex.moves.get(moveName);
+
+      if (move && move.category !== "Status") {
+        const powerData = this.calculateMovePower(
+          room.curSet,
+          move,
+          species,
+          room.curTeam.dex
+        );
+        if (powerData) {
+          const powerDisplay = this.createPowerDisplayElement(powerData);
+          powerDisplay.classList.add("move-search-power");
+
+          // Add tooltip handlers
+          const type =
+            powerData.category === "Physical"
+              ? "physical-power"
+              : "special-power";
+          const powerDataId = this.generateDataId();
+          this.tooltipData[powerDataId] = powerData;
+
+          powerDisplay.onmouseover = (event) => {
+            event.stopPropagation();
+            window.GuzztoolMantis.showTooltip(event, type, powerDataId);
+          };
+          powerDisplay.onmouseout = (event) => {
+            event.stopPropagation();
+            window.GuzztoolMantis.hideTooltip();
+          };
+
+          estCol.appendChild(document.createElement("em"));
+          estCol.appendChild(document.createElement("br"));
+          estCol.appendChild(powerDisplay);
+        }
+      }
+      // Insert the column after .labelcol
+      const labelCol = entry.querySelector(".labelcol");
+      if (labelCol) {
+        labelCol.insertAdjacentElement("afterend", estCol);
+      }
+    });
+  },
+
+  updatePokemonSearchDisplays: function (room) {
+    if (!this.shouldShowBulkInSearch()) return;
+
+    this.log.debug("Updating pokemon search displays");
+
+    // Find all pokemon entries in the search results
+    const pokemonEntries = room.el.querySelectorAll(
+      '.teambuilder-results .result a[data-entry^="pokemon|"]'
+    );
+
+    // Add headers for the new columns if not present
+    const headerRow = room.el.querySelector(".teambuilder-results .sortrow");
+    if (headerRow && !headerRow.querySelector(".mantis-pbulksortcol")) {
+      const lastHeader = headerRow.querySelector(".sortcol:last-child");
+      if (lastHeader) {
+        // Add Physical Bulk header
+        const pBulkHeader = document.createElement("button");
+        pBulkHeader.className = "sortcol statsortcol mantis-pbulksortcol";
+        pBulkHeader.setAttribute("data-sort", "mantispbulk");
+        pBulkHeader.innerHTML = "PB";
+        lastHeader.insertAdjacentElement("afterend", pBulkHeader);
+
+        // Add Special Bulk header
+        const sBulkHeader = document.createElement("button");
+        sBulkHeader.className = "sortcol statsortcol mantis-sbulksortcol";
+        sBulkHeader.setAttribute("data-sort", "mantissbulk");
+        sBulkHeader.innerHTML = "SB";
+        pBulkHeader.insertAdjacentElement("afterend", sBulkHeader);
+      }
+    }
+
+    pokemonEntries.forEach((entry) => {
+      // Remove any existing bulk columns
+      entry.querySelector(".mantis-pbulkcol")?.remove();
+      entry.querySelector(".mantis-sbulkcol")?.remove();
+
+      // Extract species from data-entry attribute
+      const species = room.curTeam.dex.species.get(
+        entry.getAttribute("data-entry")?.split("|")[1]
+      );
+
+      const bulkValues = this.calculateBulkValues(
+        {
+          species: species.id,
+          moves: [],
+        },
+        species,
+        room.curTeam.dex
+      );
+
+      // Create Physical Bulk column
+      const pBulkCol = document.createElement("span");
+      pBulkCol.className = "col bstcol mantis-pbulkcol";
+
+      const pBulkDisplay = document.createElement("span");
+      pBulkDisplay.textContent = bulkValues.physical.value;
+      pBulkDisplay.style.color = this.getColors().PHYSICAL;
+      pBulkDisplay.classList.add("pokemon-search-bulk");
+
+      // Add tooltip handlers for physical bulk
+      const pBulkDataId = this.generateDataId();
+      this.tooltipData[pBulkDataId] = bulkValues.physical;
+
+      pBulkDisplay.onmouseover = (event) => {
+        event.stopPropagation();
+        window.GuzztoolMantis.showTooltip(event, "physical-bulk", pBulkDataId);
+      };
+      pBulkDisplay.onmouseout = (event) => {
+        event.stopPropagation();
+        window.GuzztoolMantis.hideTooltip();
+      };
+
+      const pbEm = document.createElement("em");
+      pbEm.textContent = "PB";
+      pbEm.appendChild(document.createElement("br"));
+      pbEm.appendChild(pBulkDisplay);
+      pBulkCol.appendChild(pbEm);
+
+      // Create Special Bulk column
+      const sBulkCol = document.createElement("span");
+      sBulkCol.className = "col bstcol mantis-sbulkcol";
+
+      const sBulkDisplay = document.createElement("span");
+      sBulkDisplay.textContent = bulkValues.special.value;
+      sBulkDisplay.style.color = this.getColors().SPECIAL;
+      sBulkDisplay.classList.add("pokemon-search-bulk");
+
+      // Add tooltip handlers for special bulk
+      const sBulkDataId = this.generateDataId();
+      this.tooltipData[sBulkDataId] = bulkValues.special;
+
+      sBulkDisplay.onmouseover = (event) => {
+        event.stopPropagation();
+        window.GuzztoolMantis.showTooltip(event, "special-bulk", sBulkDataId);
+      };
+      sBulkDisplay.onmouseout = (event) => {
+        event.stopPropagation();
+        window.GuzztoolMantis.hideTooltip();
+      };
+
+      const sbEm = document.createElement("em");
+      sbEm.textContent = "SB";
+      sbEm.appendChild(document.createElement("br"));
+      sbEm.appendChild(sBulkDisplay);
+      sBulkCol.appendChild(sbEm);
+
+      // Insert the columns after .bstcol
+      const bstCol = entry.querySelector(".bstcol");
+      bstCol.insertAdjacentElement("afterend", pBulkCol);
+      pBulkCol.insertAdjacentElement("afterend", sBulkCol);
     });
   },
 
@@ -433,9 +829,10 @@ const subtool = {
     const colors = this.getColors();
     const display = document.createElement("span");
     display.className = "mantis-power-display";
-    
+
     // Add suffix for min-roll values, but not for "?"
-    const suffix = this.isMinRoll() && powerData.value !== "?" ? MIN_ROLL_SUFFIX : "";
+    const suffix =
+      this.isMinRoll() && powerData.value !== "?" ? MIN_ROLL_SUFFIX : "";
     display.textContent = powerData.value + suffix;
     display.style.color =
       powerData.category === "Physical" ? colors.PHYSICAL : colors.SPECIAL;
@@ -444,8 +841,6 @@ const subtool = {
   },
 
   calculateBulkValues: function (pokemon, species, dex) {
-    this.log.debug(`Calculating bulk for ${pokemon.name || pokemon.species}`);
-
     // Get stats - use actual stats from Pokemon object in battle rooms
     let hp, def, spd;
     if (pokemon.stats) {
@@ -466,25 +861,15 @@ const subtool = {
       if (item) {
         if (item.id === "assaultvest") {
           spd = Math.floor(spd * 1.5);
-          this.log.debug(`Assault Vest applied: SpD increased to ${spd}`);
         } else if (item.id === "eviolite" && species.nfe) {
           def = Math.floor(def * 1.5);
           spd = Math.floor(spd * 1.5);
-          this.log.debug(
-            `Eviolite applied to NFE Pokemon: Def increased to ${def}, SpD increased to ${spd}`
-          );
         }
       }
     }
 
-    this.log.debug(`Calculated stats - HP: ${hp}, Def: ${def}, SpD: ${spd}`);
-
-    const physicalBulk = Math.round((hp * def) / 1000) / 10;
-    const specialBulk = Math.round((hp * spd) / 1000) / 10;
-
-    this.log.debug(
-      `Bulk values - Physical: ${physicalBulk}, Special: ${specialBulk}`
-    );
+    const physicalBulk = this.formatValue(hp * def);
+    const specialBulk = this.formatValue(hp * spd);
 
     return {
       physical: {
@@ -527,15 +912,11 @@ const subtool = {
       hasSTAB: hasSTAB,
     };
 
-    if (move.basePower === 0) {
-      powerData.value = "?";
-    } else {
-      let power = attackStat * move.basePower * rollMultiplier;
-      if (hasSTAB) {
-        power *= 1.5;
-      }
-      powerData.value = Math.round(power / 1000) / 10;
+    let power = attackStat * move.basePower * rollMultiplier;
+    if (hasSTAB) {
+      power *= 1.5;
     }
+    powerData.value = this.formatValue(power, move.basePower);
 
     return powerData;
   },
@@ -572,15 +953,11 @@ const subtool = {
       hasSTAB: hasSTAB,
     };
 
-    if (actualBasePower === 0) {
-      powerData.value = "?";
-    } else {
-      let power = attackStat * actualBasePower * rollMultiplier;
-      if (hasSTAB) {
-        power *= 1.5;
-      }
-      powerData.value = Math.round(power / 1000) / 10;
+    let power = attackStat * actualBasePower * rollMultiplier;
+    if (hasSTAB) {
+      power *= 1.5;
     }
+    powerData.value = this.formatValue(power, actualBasePower);
 
     return powerData;
   },
@@ -702,7 +1079,7 @@ const subtool = {
     this.log.debug("Modifying Pokemon tooltip content");
 
     const tooltipWrapper = document.getElementById("tooltipwrapper");
-    const args = tooltipWrapper
+    const args = document
       .querySelector("[data-tooltip]:hover")
       .dataset.tooltip.split("|");
     const type = args[0];
@@ -786,30 +1163,27 @@ const subtool = {
         if (!powerData) return;
 
         const powerDisplay = this.createPowerDisplayElement(powerData);
-        powerDisplay.textContent = ` (${powerData.value}${this.isMinRoll() && powerData.value !== "?" ? MIN_ROLL_SUFFIX : ""})`;
+        powerDisplay.textContent = ` (${powerDisplay.textContent})`;
 
         // Add tooltip handlers for battle tooltips
         const powerDataId = this.generateDataId();
         this.tooltipData[powerDataId] = powerData;
 
-        powerDisplay.onmouseover = (event) => {
-          event.stopPropagation();
-          this.showTooltip(
-            event,
-            powerData.category === "Physical"
-              ? "physical-power"
-              : "special-power",
-            powerDataId
-          );
-        };
-        powerDisplay.onmouseout = (event) => {
-          event.stopPropagation();
-          this.hideTooltip();
-        };
-
         br.parentNode.insertBefore(powerDisplay, br);
       });
     }
+  },
+
+  // Unified helper for formatting values with consistent decimal places
+  formatValue: function (value, basePower = null) {
+    // Handle variable power moves (basePower === 0)
+    if (basePower === 0) {
+      return "?";
+    }
+
+    // Round to 1 decimal place and ensure consistent formatting
+    const rounded = Math.round(value / 1000) / 10;
+    return rounded.toFixed(1);
   },
 };
 
