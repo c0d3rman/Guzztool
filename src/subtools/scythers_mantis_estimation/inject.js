@@ -79,6 +79,53 @@ const subtool = {
     return this.options?.min_roll === true;
   },
 
+  extractFormatId: function (roomId) {
+    // Extract format ID from room ID like "battle-gen9randombattle-2394686319"
+    return roomId.match(/battle-([^-]+)-\d+/)?.[1] || null;
+  },
+
+  calculateBulkRange: function (species, dex, formatId) {
+    if (!formatId) return null;
+
+    const statGuesser = new BattleStatGuesser(formatId);
+    
+    // Calculate minimum bulk (0 EVs, 31 IVs, neutral nature)
+    const minSet = { species: species.id, moves: [] };
+    const minHp = statGuesser.getStat("hp", minSet, 0, 0);
+    const minDef = statGuesser.getStat("def", minSet, 0, 0);
+    const minSpd = statGuesser.getStat("spd", minSet, 0, 0);
+    
+    // Calculate maximum bulk (252 EVs in HP and defensive stat, 31 IVs, defensive boosting nature)
+    const maxSet = { species: species.id, moves: [] };
+    const maxHp = statGuesser.getStat("hp", maxSet, 252, 0);
+    const maxDef = statGuesser.getStat("def", maxSet, 252, 1.1); // +Def nature
+    const maxSpd = statGuesser.getStat("spd", maxSet, 252, 1.1); // +SpD nature
+    
+    const physicalMin = this.formatValue(minHp * minDef);
+    const physicalMax = this.formatValue(maxHp * maxDef);
+    const specialMin = this.formatValue(minHp * minSpd);
+    const specialMax = this.formatValue(maxHp * maxSpd);
+    
+          return {
+        physical: {
+          min: physicalMin,
+          max: physicalMax,
+          minHp: minHp,
+          minDef: minDef,
+          maxHp: maxHp,
+          maxDef: maxDef
+        },
+        special: {
+          min: specialMin,
+          max: specialMax,
+          minHp: minHp,
+          minSpd: minSpd,
+          maxHp: maxHp,
+          maxSpd: maxSpd
+        }
+      };
+  },
+
   initTooltip: function () {
     if (document.getElementById("mantis-tooltip")) return;
 
@@ -90,6 +137,18 @@ const subtool = {
       showTooltip: this.showTooltip.bind(this),
       hideTooltip: this.hideTooltip.bind(this),
     };
+
+    // Add global mouse move listener to hide tooltip when mouse leaves the element, even if the element is destroyed
+    document.addEventListener("mousemove", (event) => {
+      const tooltipElement = document.getElementById("mantis-tooltip");
+      if (tooltipElement && tooltipElement.style.display !== "none") {
+        const target = event.target;
+        const isOverTooltipElement = target.closest("[data-bulk-type]") || target.closest(".mantis-power-display");
+        if (!isOverTooltipElement) {
+          this.hideTooltip();
+        }
+      }
+    });
   },
 
   getBulkTooltipHTML: function (type, bulkData) {
@@ -103,6 +162,12 @@ const subtool = {
     const rollType = this.isMinRoll() ? "min roll" : "max roll";
     const powerSuffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
     const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
+    
+    let noteHtml = "";
+    if (bulkData.note) {
+      noteHtml = `<p class="mantis-tooltip-note">Assuming ${bulkData.note}</p>`;
+    }
+    
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${
@@ -112,6 +177,7 @@ const subtool = {
         bulkData.hp
       } HP * ${statValue} ${statName}) / 10000 ≈ ${bulkData.value}</p>
       <p class="mantis-tooltip-example">${exampleText}</p>
+      ${noteHtml}
     `;
   },
 
@@ -156,9 +222,9 @@ const subtool = {
     const tooltip = document.getElementById("mantis-tooltip");
     let html = "";
 
-    if (type === "physical-bulk") {
+    if (["physical-bulk", "physical-bulk-min", "physical-bulk-max"].includes(type)) {
       html = this.getBulkTooltipHTML("physical", data);
-    } else if (type === "special-bulk") {
+    } else if (["special-bulk", "special-bulk-min", "special-bulk-max"].includes(type)) {
       html = this.getBulkTooltipHTML("special", data);
     } else if (type === "physical-power") {
       html = this.getPowerTooltipHTML("Physical", data);
@@ -737,20 +803,94 @@ const subtool = {
     bulkDisplay.className = "mantis-bulk-display";
 
     const physBulk = document.createElement("span");
-    physBulk.textContent = `${bulkValues.physical.value}`;
+    physBulk.textContent = bulkValues.physical.value;
     physBulk.style.color = colors.PHYSICAL;
     physBulk.dataset.bulkType = "physical";
 
     const separator = document.createTextNode(" / ");
 
     const specBulk = document.createElement("span");
-    specBulk.textContent = `${bulkValues.special.value}`;
+    specBulk.textContent = bulkValues.special.value;
     specBulk.style.color = colors.SPECIAL;
     specBulk.dataset.bulkType = "special";
 
     bulkDisplay.appendChild(physBulk);
     bulkDisplay.appendChild(separator);
     bulkDisplay.appendChild(specBulk);
+
+    return bulkDisplay;
+  },
+
+  createBulkRangeDisplayElement: function (bulkRangeValues, species) {
+    const colors = this.getColors();
+    const bulkDisplay = document.createElement("div");
+    bulkDisplay.className = "mantis-bulk-display mantis-bulk-range-display";
+    bulkDisplay.style.fontStyle = "italic";
+
+    const physBulkMin = document.createElement("span");
+    physBulkMin.textContent = bulkRangeValues.physical.min;
+    physBulkMin.style.color = colors.PHYSICAL;
+    physBulkMin.dataset.bulkType = "physical-min";
+
+    const physBulkMax = document.createElement("span");
+    physBulkMax.textContent = bulkRangeValues.physical.max;
+    physBulkMax.style.color = colors.PHYSICAL;
+    physBulkMax.dataset.bulkType = "physical-max";
+
+    const physSeparator = document.createTextNode("-");
+
+    const separator = document.createTextNode(" / ");
+
+    const specBulkMin = document.createElement("span");
+    specBulkMin.textContent = bulkRangeValues.special.min;
+    specBulkMin.style.color = colors.SPECIAL;
+    specBulkMin.dataset.bulkType = "special-min";
+
+    const specBulkMax = document.createElement("span");
+    specBulkMax.textContent = bulkRangeValues.special.max;
+    specBulkMax.style.color = colors.SPECIAL;
+    specBulkMax.dataset.bulkType = "special-max";
+
+    const specSeparator = document.createTextNode("-");
+
+    [physBulkMin, physSeparator, physBulkMax, separator, specBulkMin, specSeparator, specBulkMax]
+      .forEach(el => bulkDisplay.appendChild(el));
+
+    // Add tooltip handlers for min values
+    const minBulkData = {
+      physical: {
+        value: bulkRangeValues.physical.min,
+        hp: bulkRangeValues.physical.minHp,
+        def: bulkRangeValues.physical.minDef,
+        note: `0 HP / 0 Def ${species.name} (Base HP: ${species.baseStats.hp} / Base Def: ${species.baseStats.def})`
+      },
+      special: {
+        value: bulkRangeValues.special.min,
+        hp: bulkRangeValues.special.minHp,
+        spd: bulkRangeValues.special.minSpd,
+        note: `0 HP / 0 SpD ${species.name} (Base HP: ${species.baseStats.hp} / Base SpD: ${species.baseStats.spd})`
+      }
+    };
+    this.addTooltipToElement(physBulkMin, "physical-bulk", minBulkData.physical, false);
+    this.addTooltipToElement(specBulkMin, "special-bulk", minBulkData.special, false);
+
+    // Add tooltip handlers for max values
+    const maxBulkData = {
+      physical: {
+        value: bulkRangeValues.physical.max,
+        hp: bulkRangeValues.physical.maxHp,
+        def: bulkRangeValues.physical.maxDef,
+        note: `252 HP / 252+ Def ${species.name} (Base HP: ${species.baseStats.hp} / Base Def: ${species.baseStats.def})`
+      },
+      special: {
+        value: bulkRangeValues.special.max,
+        hp: bulkRangeValues.special.maxHp,
+        spd: bulkRangeValues.special.maxSpd,
+        note: `252 HP / 252+ SpD ${species.name} (Base HP: ${species.baseStats.hp} / Base SpD: ${species.baseStats.spd})`
+      }
+    };
+    this.addTooltipToElement(physBulkMax, "physical-bulk", maxBulkData.physical, false);
+    this.addTooltipToElement(specBulkMax, "special-bulk", maxBulkData.special, false);
 
     return bulkDisplay;
   },
@@ -772,6 +912,8 @@ const subtool = {
 
   calculateBulkValues: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
     const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+    if (!stats) return null;
+    
     const hp = stats.hp;
     const def = stats.def;
     const spd = stats.spd;
@@ -977,6 +1119,7 @@ const subtool = {
       } else if (side === battle.mySide.ally && battle.myAllyPokemon) {
         serverPokemon = battle.myAllyPokemon[pokemonIndex];
       }
+      // If it's the enemy, we don't have stats, so will use bulk ranges
     } else if (type === "pokemon") {
       // pokemon|SIDE|POKEMON
       // clientPokemon definitely exists, serverPokemon always ignored
@@ -985,8 +1128,8 @@ const subtool = {
       const pokemonIndex = parseInt(args[2], 10);
       clientPokemon = side.pokemon[pokemonIndex];
       
-      // For pokemon tooltips, we don't have serverPokemon data
-      // We'll use the clientPokemon stats directly
+      // For pokemon tooltips from the team sidebar (on both sides), we don't have stats
+      // Will use bulk ranges instead
     } else {
       return;
     }
@@ -1002,18 +1145,32 @@ const subtool = {
 
     // Add bulk display to top right of tooltip
     if (this.shouldShowBulk()) {
+      let bulkElement;
+      
+      // Try to calculate actual bulk values first
       const bulkValues = this.calculateBulkValues(
         { clientPokemon, serverPokemon },
         species,
         battle.dex
       );
-      this.log.debug(`Bulk values: ${JSON.stringify(bulkValues)}`);
-      const bulkElement = this.createBulkDisplayElement(bulkValues);
-      bulkElement.classList.add("battle-bulk");
-
-      this.addTooltipHandlers(bulkElement, bulkValues, false);
-
-      tooltipBody.appendChild(bulkElement);
+      
+      if (bulkValues) {
+        bulkElement = this.createBulkDisplayElement(bulkValues);
+        this.addTooltipHandlers(bulkElement, bulkValues, false);
+      } else if (type === "pokemon" || type === "activepokemon") {
+        // If we can't get actual stats, calculate bulk ranges for pokemon and activepokemon tooltips
+        const formatId = this.extractFormatId(room.id);
+        const bulkRangeValues = this.calculateBulkRange(species, battle.dex, formatId);
+        
+        if (bulkRangeValues) {
+          bulkElement = this.createBulkRangeDisplayElement(bulkRangeValues, species);
+        }
+      }
+      
+      if (bulkElement) {
+        bulkElement.classList.add("battle-bulk");
+        tooltipBody.querySelector("h2").appendChild(bulkElement);
+      }
     }
 
     // Add power values to moves
@@ -1132,7 +1289,7 @@ const subtool = {
       };
     }
     
-    throw new Error(`No stats available - ${pokemonSet} ${serverPokemon} ${clientPokemon}`);
+    return null;
   },
 };
 

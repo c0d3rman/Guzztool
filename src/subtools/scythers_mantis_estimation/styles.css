@@ -48,6 +48,19 @@
   cursor: help;
 }
 
+/* Bulk range display styles */
+.mantis-bulk-range-display {
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.mantis-bulk-range-display span[data-bulk-type="physical-min"],
+.mantis-bulk-range-display span[data-bulk-type="physical-max"],
+.mantis-bulk-range-display span[data-bulk-type="special-min"],
+.mantis-bulk-range-display span[data-bulk-type="special-max"] {
+  cursor: help;
+}
+
 /* Power display styles */
 .mantis-power-display {
   font-weight: bold;
@@ -77,10 +90,12 @@
 
 /* Battle positioning */
 .battle-bulk {
-  position: absolute;
-  top: 2px;
-  right: 5px;
-  z-index: 1;
+  float: right;
+  margin-left: 10px;
+  margin-bottom: 2px;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .battle-power {
@@ -117,6 +132,15 @@
   margin-top: 5px;
   margin-bottom: 0;
   font-weight: bold;
+}
+
+/* Note styles */
+.mantis-tooltip-note {
+  color: #888;
+  font-size: 0.9em;
+  margin-top: 5px;
+  margin-bottom: 0;
+  font-style: italic;
 }
 
 /* Shrink the ability columns in the pokemon search to fit the new bulk columns */
