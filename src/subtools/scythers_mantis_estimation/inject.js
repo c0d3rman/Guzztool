@@ -391,80 +391,56 @@ const subtool = {
     const pokemonSortProxy = new FunctionListenerProxy(
       BattlePokemonSearch.prototype.sort,
       (originalFn, results, sortCol, reverseSort) => {
-        // Handle physical bulk sorting
+        // Shared cache for this sort call (single stat type per call)
+        const bulkCache = {};
+        // Helper to get (and cache) bulk value for a species id
+        const getBulk = (speciesId, statType, cache = bulkCache) => {
+          if (cache[speciesId] !== undefined) return cache[speciesId];
+          const species = room.curTeam.dex.species.get(speciesId);
+          if (!species) {
+            cache[speciesId] = NaN;
+            return NaN;
+          }
+          const tempSet = { species: speciesId, moves: [] };
+          const bulkData = this.calculateBulkValues(
+            { pokemonSet: tempSet },
+            species,
+            room.curTeam.dex
+          );
+          if (!bulkData || !bulkData[statType]) {
+            cache[speciesId] = NaN;
+            return NaN;
+          }
+          const value = parseFloat(bulkData[statType].value);
+          cache[speciesId] = value;
+          return value;
+        };
+        // Physical bulk sorting
         if (sortCol === "mantispbulk") {
           this.log.debug("Sorting by mantis physical bulk");
           const sortOrder = reverseSort ? -1 : 1;
           return results.sort(([rowType1, id1], [rowType2, id2]) => {
             if (rowType1 === "pokemon" && rowType2 === "pokemon") {
               if (!room.curSet) return 0;
-
-              const species1 = room.curTeam.dex.species.get(id1);
-              const species2 = room.curTeam.dex.species.get(id2);
-
-              if (!species1 || !species2) return 0;
-
-              // Create temporary sets for bulk calculation
-              const tempSet1 = { species: id1, moves: [] };
-              const tempSet2 = { species: id2, moves: [] };
-
-              const bulkData1 = this.calculateBulkValues(
-                tempSet1,
-                species1,
-                room.curTeam.dex
-              );
-              const bulkData2 = this.calculateBulkValues(
-                tempSet2,
-                species2,
-                room.curTeam.dex
-              );
-
-              const bulk1 = parseFloat(bulkData1.physical.value);
-              const bulk2 = parseFloat(bulkData2.physical.value);
-
-              // Handle NaN values (shouldn't happen but just in case)
+              const bulk1 = getBulk(id1, "physical");
+              const bulk2 = getBulk(id2, "physical");
               if (isNaN(bulk1) && isNaN(bulk2)) return 0;
               if (isNaN(bulk1)) return sortOrder;
               if (isNaN(bulk2)) return -sortOrder;
-
               return (bulk2 - bulk1) * sortOrder;
             }
             return 0;
           });
         }
-
-        // Handle special bulk sorting
+        // Special bulk sorting
         if (sortCol === "mantissbulk") {
           this.log.debug("Sorting by mantis special bulk");
           const sortOrder = reverseSort ? -1 : 1;
           return results.sort(([rowType1, id1], [rowType2, id2]) => {
             if (rowType1 === "pokemon" && rowType2 === "pokemon") {
               if (!room.curSet) return 0;
-
-              const species1 = room.curTeam.dex.species.get(id1);
-              const species2 = room.curTeam.dex.species.get(id2);
-
-              if (!species1 || !species2) return 0;
-
-              // Create temporary sets for bulk calculation
-              const tempSet1 = { species: id1, moves: [] };
-              const tempSet2 = { species: id2, moves: [] };
-
-              const bulkData1 = this.calculateBulkValues(
-                tempSet1,
-                species1,
-                room.curTeam.dex
-              );
-              const bulkData2 = this.calculateBulkValues(
-                tempSet2,
-                species2,
-                room.curTeam.dex
-              );
-
-              const bulk1 = parseFloat(bulkData1.special.value);
-              const bulk2 = parseFloat(bulkData2.special.value);
-
-              // Handle NaN values (shouldn't happen but just in case)
+              const bulk1 = getBulk(id1, "special");
+              const bulk2 = getBulk(id2, "special");
               if (isNaN(bulk1) && isNaN(bulk2)) return 0;
               if (isNaN(bulk1)) return sortOrder;
               if (isNaN(bulk2)) return -sortOrder;
@@ -663,13 +639,11 @@ const subtool = {
         entry.getAttribute("data-entry")?.split("|")[1]
       );
 
+      // Use the current set for all fields except species
+      let baseSet = room.curSet ? { ...room.curSet } : {};
+      baseSet.species = species;
       const bulkValues = this.calculateBulkValues(
-        {
-          pokemonSet: {
-            species: species.id,
-            moves: [],
-          },
-        },
+        { pokemonSet: baseSet },
         species,
         room.curTeam.dex
       );
@@ -712,8 +686,10 @@ const subtool = {
 
       // Insert the columns after .bstcol
       const bstCol = entry.querySelector(".bstcol");
-      bstCol.insertAdjacentElement("afterend", pBulkCol);
-      pBulkCol.insertAdjacentElement("afterend", sBulkCol);
+      if (bstCol) {
+        bstCol.insertAdjacentElement("afterend", pBulkCol);
+        pBulkCol.insertAdjacentElement("afterend", sBulkCol);
+      }
     });
   },
 
