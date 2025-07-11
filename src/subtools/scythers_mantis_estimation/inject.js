@@ -401,9 +401,11 @@ const subtool = {
             cache[speciesId] = NaN;
             return NaN;
           }
-          const tempSet = { species: speciesId, moves: [] };
+          // Use the current set for all fields except species
+          let baseSet = room.curSet ? { ...room.curSet } : {};
+          baseSet.species = species;
           const bulkData = this.calculateBulkValues(
-            { pokemonSet: tempSet },
+            { pokemonSet: baseSet },
             species,
             room.curTeam.dex
           );
@@ -899,7 +901,7 @@ const subtool = {
     let finalSpd = spd;
     
     const item = serverPokemon?.item || clientPokemon?.item || pokemonSet?.item;
-    if (item && !this.shouldShowModifiedStatsInBattle()) {
+    if (item) {
       const itemData = dex.items.get(item);
       if (itemData) {
         if (itemData.id === "assaultvest") {
