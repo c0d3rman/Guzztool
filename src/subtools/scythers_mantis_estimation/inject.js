@@ -931,7 +931,7 @@ const subtool = {
   },
 
   calculateMovePower: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex) {
-    if (move.category === "Status") {
+    if (move.category === "Status" || move.id == "recharge") {
       return null;
     }
 
