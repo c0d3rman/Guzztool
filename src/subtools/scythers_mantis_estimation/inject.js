@@ -182,7 +182,7 @@ const subtool = {
   },
 
   getPowerTooltipHTML: function (type, powerData) {
-    const typeDisplay = type === "Physical" ? "Physical" : "Special";
+    const typeDisplay = type === "physical" ? "Physical" : "Special";
 
     if (powerData.value === "?") {
       return `
@@ -223,9 +223,9 @@ const subtool = {
     let html = "";
 
     if (["physical-bulk", "physical-bulk-min", "physical-bulk-max"].includes(type)) {
-      html = this.getBulkTooltipHTML("physical", data);
+      html = this.getBulkTooltipHTML("Physical", data);
     } else if (["special-bulk", "special-bulk-min", "special-bulk-max"].includes(type)) {
-      html = this.getBulkTooltipHTML("special", data);
+      html = this.getBulkTooltipHTML("Special", data);
     } else if (type === "physical-power") {
       html = this.getPowerTooltipHTML("Physical", data);
     } else if (type === "special-power") {
