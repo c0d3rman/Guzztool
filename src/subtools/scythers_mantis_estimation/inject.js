@@ -401,8 +401,13 @@ const subtool = {
             cache[speciesId] = NaN;
             return NaN;
           }
-          // Use the current set for all fields except species
-          let baseSet = room.curSet ? { ...room.curSet } : {};
+          // Use the current set for all fields except species if setting enabled, otherwise use default
+          let baseSet;
+          if (this.options?.use_base_set_in_search) {
+            baseSet = room.curSet ? { ...room.curSet } : {};
+          } else {
+            baseSet = {};
+          }
           baseSet.species = species;
           const bulkData = this.calculateBulkValues(
             { pokemonSet: baseSet },
@@ -641,8 +646,13 @@ const subtool = {
         entry.getAttribute("data-entry")?.split("|")[1]
       );
 
-      // Use the current set for all fields except species
-      let baseSet = room.curSet ? { ...room.curSet } : {};
+      // Use the current set for all fields except species if setting enabled, otherwise use default
+      let baseSet;
+      if (this.options?.use_base_set_in_search) {
+        baseSet = room.curSet ? { ...room.curSet } : {};
+      } else {
+        baseSet = {};
+      }
       baseSet.species = species;
       const bulkValues = this.calculateBulkValues(
         { pokemonSet: baseSet },
@@ -1225,7 +1235,6 @@ const subtool = {
     // If we're in battle and the setting is enabled, use modified stats
     if (this.shouldShowModifiedStatsInBattle() && room.battle && serverPokemon) {
       const modifiedStats = room.battle.scene.tooltips.calculateModifiedStats(clientPokemon, serverPokemon);
-      this.log.debug(`Modified stats: ${JSON.stringify(modifiedStats)}`);
       return {
         hp: serverPokemon.maxhp,
         atk: modifiedStats.atk,

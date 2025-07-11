@@ -60,6 +60,13 @@
             "title": "Special color",
             "default": "#1976d2",
             "additional_properties": "type=\"color\""
+        },
+        {
+            "id": "use_base_set_in_search",
+            "type": "boolean",
+            "title": "Use current set for Pokémon search display/sort",
+            "description": "If enabled, the bulk values in the Pokémon search in teambuilder will use your current set's EVs and item, so you can compare them directly to your current Pokémon.",
+            "default": false
         }
     ]
 } 
