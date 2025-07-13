@@ -85,21 +85,21 @@ const subtool = {
         const calcGen = calc.Generations.get(gen);
         
         // Calculate minimum bulk (0 EVs, neutral nature)
-        const minPokemon = new calc.Pokemon(calcGen, species.name, {
+        const minPokemon = this.createCalcPokemon(calcGen, species, {
           level: pokemonLevel,
           evs: { hp: 0, def: 0, spd: 0 },
           nature: 'Hardy',
         });
         
         // Calculate maximum physical bulk (252 HP, 252+ Def)
-        const maxDefPokemon = new calc.Pokemon(calcGen, species.name, {
+        const maxDefPokemon = this.createCalcPokemon(calcGen, species, {
           level: pokemonLevel,
           evs: { hp: 252, def: 252 },
           nature: 'Bold', // +Def nature
         });
         
         // Calculate maximum special bulk (252 HP, 252+ SpD)
-        const maxSpDPokemon = new calc.Pokemon(calcGen, species.name, {
+        const maxSpDPokemon = this.createCalcPokemon(calcGen, species, {
           level: pokemonLevel,
           evs: { hp: 252, spd: 252 },
           nature: 'Calm', // +SpD nature
@@ -212,6 +212,18 @@ const subtool = {
       <p class="mantis-tooltip-example">${example}</p>
       ${additionalHtml}
     `;
+  },
+
+  // The calc doesn't know about cosmetic-only formes like Alcremie-Rainbow-Swirl,
+  // But does need to know about formes like Palafin-Hero.
+  // There's no easy way to tell them apart, so we just try the forme first and then
+  // the baseSpecies if it fails.
+  createCalcPokemon: function(calcGen, species, options = {}) {
+    try {
+      return new calc.Pokemon(calcGen, species.id, options);
+    } catch {
+      return new calc.Pokemon(calcGen, species.baseSpecies, options);
+    }
   },
 
   getBulkTooltipHTML: function (type, bulkData) {
@@ -981,9 +993,7 @@ const subtool = {
     // Use damage calc if available
     if (calc) {
       try {
-        const gen = this.getGeneration();
-        // In the minified version, Generations is a property with a get method
-        const calcGen = calc.Generations.get(gen);
+        const calcGen = calc.Generations.get(this.getGeneration());
         
         // Create Pokemon object for calculation
         const set = pokemonSet || {};
@@ -1008,7 +1018,7 @@ const subtool = {
           nature: 'Hardy',
         });
         
-        const defender = new calc.Pokemon(calcGen, species.name, pokemonOptions);
+        const defender = this.createCalcPokemon(calcGen, species, pokemonOptions);
         
         // Calculate with physical and special moves to get defense modifiers
         const physicalMove = new calc.Move(calcGen, 'Tackle');
@@ -1165,7 +1175,7 @@ const subtool = {
       curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
     };
     
-    const attacker = new calc.Pokemon(calcGen, species.name, attackerOptions);
+    const attacker = this.createCalcPokemon(calcGen, species, attackerOptions);
     
     // Create a neutral defender for power calculation
     const defender = new calc.Pokemon(calcGen, 'Mew', {
