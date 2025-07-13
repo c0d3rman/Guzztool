@@ -1,61 +1,6 @@
 import { FunctionListenerProxy } from "@guzztool/util/ListenerProxy";
-import * as calc from '@smogon/calc';
+import { calc } from './modifierTracker';
 
-// Create a modifier tracking system
-class ModifierTracker {
-  constructor() {
-    this.currentMods = [];
-    this.lastCalculation = null;
-  }
-  
-  startTracking() {
-    this.currentMods = [];
-  }
-  
-  addModifier(mod, type, reasons) {
-    this.currentMods.push({ mod, type, reasons });
-  }
-  
-  finishTracking() {
-    // Remove duplicates, which occur from multihit moves
-    const uniqueModsSet = new Set(this.currentMods.map(mod => JSON.stringify(mod)));
-    const result = Array.from(uniqueModsSet).map(modString => JSON.parse(modString));
-    
-    this.lastCalculation = result;
-    this.currentMods = [];
-    return result;
-  }
-}
-
-// Initialize the tracker
-window._modTracker = new ModifierTracker();
-
-// Proxy the calculate function to track modifiers
-const calculateProxy = new FunctionListenerProxy(
-  calc.calculate,
-  (originalFn, ...args) => {
-    // Clear the global damageCalcModLog before calculation
-    window.damageCalcModLog = [];
-    window._modTracker.startTracking();
-    
-    // Run the original calculation
-    const result = originalFn(...args);
-    
-    // Transfer damageCalcModLog to our tracker
-    window.damageCalcModLog.forEach(entry => {
-      window._modTracker.addModifier(entry.mod, entry.type || 'at', entry.reasons);
-    });
-    
-    // Store the modifiers on the result object
-    result.allModifiers = window._modTracker.finishTracking();
-    
-    return result;
-  }
-);
-calc.calculate = calculateProxy.proxy;
-
-// Export calc to window
-window.calc = calc;
 
 const MIN_ROLL_SUFFIX = "m";
 
@@ -102,46 +47,10 @@ const subtool = {
     document.head.appendChild(link);
   },
 
-  getColors: function () {
-    return {
-      PHYSICAL: this.options?.physical_color || "#d32f2f",
-      SPECIAL: this.options?.special_color || "#1976d2",
-    };
-  },
-
-  shouldShowBulk: function () {
-    return this.options?.show_bulk !== false;
-  },
-
-  shouldShowPower: function () {
-    return this.options?.show_power !== false;
-  },
-
-  shouldShowPowerInSearch: function () {
-    return this.options?.show_power_in_search !== false;
-  },
-
-  shouldShowBulkInSearch: function () {
-    return this.options?.show_bulk_in_search !== false;
-  },
-
-  shouldShowModifiedStatsInBattle: function () {
-    return this.options?.show_modified_stats_in_battle === true;
-  },
-
   getRollMultiplier: function () {
     return this.options?.min_roll ? 0.714 : 0.84;
   },
 
-  isMinRoll: function () {
-    return this.options?.min_roll === true;
-  },
-  
-  shouldUseDamageCalc: function () {
-    // Allow users to opt out of damage calc if they want
-    return this.options?.use_damage_calc !== false && window.calc;
-  },
-  
   getGeneration: function () {
     // Get generation from current context
     if (room.battle) {
@@ -154,10 +63,7 @@ const subtool = {
       return room.dex.gen;
     }
     // Use global Dex as fallback
-    if (window.Dex?.gen) {
-      return window.Dex.gen;
-    }
-    return 9; // Final fallback
+    return window.Dex.gen;
   },
 
   extractFormatId: function (roomId) {
@@ -172,28 +78,28 @@ const subtool = {
     const pokemonLevel = level || 100;
 
     // Use damage calc if available
-    if (window.calc && this.shouldUseDamageCalc()) {
+    if (calc) {
       try {
         const gen = this.getGeneration();
         // In the minified version, Generations is a property with a get method
-        const calcGen = window.calc.Generations.get(gen);
+        const calcGen = calc.Generations.get(gen);
         
         // Calculate minimum bulk (0 EVs, neutral nature)
-        const minPokemon = new window.calc.Pokemon(calcGen, species.name, {
+        const minPokemon = new calc.Pokemon(calcGen, species.name, {
           level: pokemonLevel,
           evs: { hp: 0, def: 0, spd: 0 },
           nature: 'Hardy',
         });
         
         // Calculate maximum physical bulk (252 HP, 252+ Def)
-        const maxPhysPokemon = new window.calc.Pokemon(calcGen, species.name, {
+        const maxDefPokemon = new calc.Pokemon(calcGen, species.name, {
           level: pokemonLevel,
           evs: { hp: 252, def: 252 },
           nature: 'Bold', // +Def nature
         });
         
         // Calculate maximum special bulk (252 HP, 252+ SpD)
-        const maxSpecPokemon = new window.calc.Pokemon(calcGen, species.name, {
+        const maxSpDPokemon = new calc.Pokemon(calcGen, species.name, {
           level: pokemonLevel,
           evs: { hp: 252, spd: 252 },
           nature: 'Calm', // +SpD nature
@@ -202,19 +108,19 @@ const subtool = {
         return {
           physical: {
             min: this.formatValue(minPokemon.stats.hp * minPokemon.stats.def),
-            max: this.formatValue(maxPhysPokemon.stats.hp * maxPhysPokemon.stats.def),
+            max: this.formatValue(maxDefPokemon.stats.hp * maxDefPokemon.stats.def),
             minHp: minPokemon.stats.hp,
             minDef: minPokemon.stats.def,
-            maxHp: maxPhysPokemon.stats.hp,
-            maxDef: maxPhysPokemon.stats.def
+            maxHp: maxDefPokemon.stats.hp,
+            maxDef: maxDefPokemon.stats.def
           },
           special: {
             min: this.formatValue(minPokemon.stats.hp * minPokemon.stats.spd),
-            max: this.formatValue(maxSpecPokemon.stats.hp * maxSpecPokemon.stats.spd),
+            max: this.formatValue(maxSpDPokemon.stats.hp * maxSpDPokemon.stats.spd),
             minHp: minPokemon.stats.hp,
             minSpd: minPokemon.stats.spd,
-            maxHp: maxSpecPokemon.stats.hp,
-            maxSpd: maxSpecPokemon.stats.spd
+            maxHp: maxSpDPokemon.stats.hp,
+            maxSpd: maxSpDPokemon.stats.spd
           },
           level: pokemonLevel
         };
@@ -304,9 +210,9 @@ const subtool = {
     const bulkValue = parseFloat(bulkData.value);
     const powerValue = 4.0;
     const percent = Math.round((powerValue / bulkValue) * 100);
-    const color = type === "Physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
-    const rollType = this.isMinRoll() ? "min roll" : "max roll";
-    const powerSuffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
+    const color = type === "Physical" ? this.options?.physical_color : this.options?.special_color;
+    const rollType = this.options?.min_roll ? "min roll" : "max roll";
+    const powerSuffix = this.options?.min_roll ? MIN_ROLL_SUFFIX : "";
     const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
     
     let noteHtml = "";
@@ -338,8 +244,8 @@ const subtool = {
       `;
     }
 
-    const suffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
-    const minRollExplanation = this.isMinRoll()
+    const suffix = this.options?.min_roll ? MIN_ROLL_SUFFIX : "";
+    const minRollExplanation = this.options?.min_roll
       ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>`
       : "";
     
@@ -383,7 +289,7 @@ const subtool = {
     
     const powerValue = Math.round(powerData.value * 10) / 10;
     const percent = Math.round((powerValue / 10.0) * 100);
-    const color = powerData.category === "Physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
+    const color = powerData.category === "Physical" ? this.options?.physical_color : this.options?.special_color;
     const exampleText = `e.g. <span style="color: ${color}">${powerData.value}${suffix}</span> power vs. <span style="color: ${color}">10.0</span> bulk → ${percent}%`;
     
     return `
@@ -700,7 +606,7 @@ const subtool = {
   },
 
   updateMoveSearchDisplays: function (room) {
-    if (!this.shouldShowPowerInSearch()) return;
+    if (!this.options?.show_power_in_search) return;
     if (!room.curSet) return;
 
     const species = room.curTeam.dex.species.get(room.curSet.species);
@@ -776,7 +682,7 @@ const subtool = {
   },
 
   updatePokemonSearchDisplays: function (room) {
-    if (!this.shouldShowBulkInSearch()) return;
+    if (!this.options?.show_bulk_in_search) return;
 
     // Find all pokemon entries in the search results
     const pokemonEntries = room.el.querySelectorAll(
@@ -834,7 +740,7 @@ const subtool = {
 
       const pBulkDisplay = document.createElement("span");
       pBulkDisplay.textContent = bulkValues.physical.value;
-      pBulkDisplay.style.color = this.getColors().PHYSICAL;
+      pBulkDisplay.style.color = this.options?.physical_color;
       pBulkDisplay.classList.add("pokemon-search-bulk");
 
       // Add tooltip handlers for physical bulk
@@ -852,7 +758,7 @@ const subtool = {
 
       const sBulkDisplay = document.createElement("span");
       sBulkDisplay.textContent = bulkValues.special.value;
-      sBulkDisplay.style.color = this.getColors().SPECIAL;
+      sBulkDisplay.style.color = this.options?.special_color;
       sBulkDisplay.classList.add("pokemon-search-bulk");
 
       // Add tooltip handlers for special bulk
@@ -876,10 +782,10 @@ const subtool = {
   addDisplaysToElement: function (container, set, species, dex, isTeamList) {
     if (!species) return;
 
-    if (this.shouldShowBulk()) {
+    if (this.options?.show_bulk) {
       this.addBulkDisplay(container, set, species, dex, isTeamList);
     }
-    if (this.shouldShowPower()) {
+    if (this.options?.show_power) {
       this.addPowerDisplays(container, set, species, dex, isTeamList);
     }
   },
@@ -954,20 +860,19 @@ const subtool = {
   },
 
   createBulkDisplayElement: function (bulkValues) {
-    const colors = this.getColors();
     const bulkDisplay = document.createElement("div");
     bulkDisplay.className = "mantis-bulk-display";
 
     const physBulk = document.createElement("span");
     physBulk.textContent = bulkValues.physical.value;
-    physBulk.style.color = colors.PHYSICAL;
+    physBulk.style.color = this.options?.physical_color;
     physBulk.dataset.bulkType = "Physical";
 
     const separator = document.createTextNode(" / ");
 
     const specBulk = document.createElement("span");
     specBulk.textContent = bulkValues.special.value;
-    specBulk.style.color = colors.SPECIAL;
+    specBulk.style.color = this.options?.special_color;
     specBulk.dataset.bulkType = "Special";
 
     bulkDisplay.appendChild(physBulk);
@@ -978,19 +883,18 @@ const subtool = {
   },
 
   createBulkRangeDisplayElement: function (bulkRangeValues, species) {
-    const colors = this.getColors();
     const bulkDisplay = document.createElement("div");
     bulkDisplay.className = "mantis-bulk-display mantis-bulk-range-display";
     bulkDisplay.style.fontStyle = "italic";
 
     const physBulkMin = document.createElement("span");
     physBulkMin.textContent = bulkRangeValues.physical.min;
-    physBulkMin.style.color = colors.PHYSICAL;
+    physBulkMin.style.color = this.options?.physical_color;
     physBulkMin.dataset.bulkType = "physical-min";
 
     const physBulkMax = document.createElement("span");
     physBulkMax.textContent = bulkRangeValues.physical.max;
-    physBulkMax.style.color = colors.PHYSICAL;
+    physBulkMax.style.color = this.options?.physical_color;
     physBulkMax.dataset.bulkType = "physical-max";
 
     const physSeparator = document.createTextNode("-");
@@ -999,12 +903,12 @@ const subtool = {
 
     const specBulkMin = document.createElement("span");
     specBulkMin.textContent = bulkRangeValues.special.min;
-    specBulkMin.style.color = colors.SPECIAL;
+    specBulkMin.style.color = this.options?.special_color;
     specBulkMin.dataset.bulkType = "special-min";
 
     const specBulkMax = document.createElement("span");
     specBulkMax.textContent = bulkRangeValues.special.max;
-    specBulkMax.style.color = colors.SPECIAL;
+    specBulkMax.style.color = this.options?.special_color;
     specBulkMax.dataset.bulkType = "special-max";
 
     const specSeparator = document.createTextNode("-");
@@ -1055,27 +959,26 @@ const subtool = {
   },
 
   createPowerDisplayElement: function (powerData) {
-    const colors = this.getColors();
     const display = document.createElement("span");
     display.className = "mantis-power-display";
 
     // Add suffix for min-roll values, but not for "?"
     const suffix =
-      this.isMinRoll() && powerData.value !== "?" ? MIN_ROLL_SUFFIX : "";
+      this.options?.min_roll && powerData.value !== "?" ? MIN_ROLL_SUFFIX : "";
     display.textContent = powerData.value + suffix;
     display.style.color =
-      powerData.category === "Physical" ? colors.PHYSICAL : colors.SPECIAL;
+      powerData.category === "Physical" ? this.options?.physical_color : this.options?.special_color;
 
     return display;
   },
 
   calculateBulkValues: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
     // Use damage calc if available
-    if (window.calc && this.shouldUseDamageCalc()) {
+    if (calc) {
       try {
         const gen = this.getGeneration();
         // In the minified version, Generations is a property with a get method
-        const calcGen = window.calc.Generations.get(gen);
+        const calcGen = calc.Generations.get(gen);
         
         // Create Pokemon object for calculation
         const set = pokemonSet || {};
@@ -1095,16 +998,16 @@ const subtool = {
         
         // For bulk calculation, we need to simulate incoming damage
         // Create a neutral attacker to test defense
-        const neutralAttacker = new window.calc.Pokemon(calcGen, 'Mew', {
+        const neutralAttacker = new calc.Pokemon(calcGen, 'Mew', {
           level: 100,
           nature: 'Hardy',
         });
         
-        const defender = new window.calc.Pokemon(calcGen, species.name, pokemonOptions);
+        const defender = new calc.Pokemon(calcGen, species.name, pokemonOptions);
         
         // Calculate with physical and special moves to get defense modifiers
-        const physicalMove = new window.calc.Move(calcGen, 'Tackle');
-        const specialMove = new window.calc.Move(calcGen, 'Water Gun');
+        const physicalMove = new calc.Move(calcGen, 'Tackle');
+        const specialMove = new calc.Move(calcGen, 'Water Gun');
         
         // Set up field conditions based on current battle state
         const fieldOptions = {};
@@ -1147,12 +1050,12 @@ const subtool = {
           };
         }
         
-        const field = new window.calc.Field(fieldOptions);
+        const field = new calc.Field(fieldOptions);
         
         // Run calculations to get defense stats with all modifiers
         // We run these calculations to ensure all modifiers are applied to the defender's stats
-        window.calc.calculate(calcGen, neutralAttacker, defender, physicalMove, field);
-        window.calc.calculate(calcGen, neutralAttacker, defender, specialMove, field);
+        calc.calculate(calcGen, neutralAttacker, defender, physicalMove, field);
+        calc.calculate(calcGen, neutralAttacker, defender, specialMove, field);
         
         // Extract the modified defense values from the calculations
         // The calc applies all modifiers internally
@@ -1182,8 +1085,8 @@ const subtool = {
         this.log.debug('clientPokemon:', clientPokemon);
         this.log.debug('species:', species);
         this.log.debug('dex:', dex);
-        this.log.debug('calc object:', window.calc);
-        this.log.debug('calc.Generations:', window.calc?.Generations);
+        this.log.debug('calc object:', calc);
+        this.log.debug('calc.Generations:', calc?.Generations);
         return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
       }
     }
@@ -1239,7 +1142,7 @@ const subtool = {
     }
 
     const gen = this.getGeneration();
-    const calcGen = window.calc.Generations.get(gen);
+    const calcGen = calc.Generations.get(gen);
     
     // Create attacker Pokemon
     const set = pokemonSet || {};
@@ -1257,10 +1160,10 @@ const subtool = {
       curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
     };
     
-    const attacker = new window.calc.Pokemon(calcGen, species.name, attackerOptions);
+    const attacker = new calc.Pokemon(calcGen, species.name, attackerOptions);
     
     // Create a neutral defender for power calculation
-    const defender = new window.calc.Pokemon(calcGen, 'Mew', {
+    const defender = new calc.Pokemon(calcGen, 'Mew', {
       level: 100,
       nature: 'Hardy',
       item: 'Poke Ball', // for Knock Off (we want to show boosted BP)
@@ -1273,7 +1176,7 @@ const subtool = {
     });
     
     // Create move
-    const calcMove = new window.calc.Move(calcGen, move.name);
+    const calcMove = new calc.Move(calcGen, move.name);
     
     // Set up field conditions
     const fieldOptions = {};
@@ -1340,10 +1243,10 @@ const subtool = {
         break;
     }
     
-    const field = new window.calc.Field(fieldOptions);
+    const field = new calc.Field(fieldOptions);
     
     // Run a calc to extract modifiers and other info
-    const result = window.calc.calculate(calcGen, attacker, defender, calcMove, field);
+    const result = calc.calculate(calcGen, attacker, defender, calcMove, field);
 
     // Start gathering the components of the final power value
     const components = [];
@@ -1451,7 +1354,7 @@ const subtool = {
   },
 
   updateBattleMoveDisplays: function (room) {
-    if (!this.shouldShowPower()) return;
+    if (!this.options?.show_power) return;
 
     // Get the active Pokemon from the battle
     const battle = room.battle;
@@ -1533,7 +1436,7 @@ const subtool = {
   },
 
   modifyTooltipContent: function (room) {
-    if (!this.shouldShowPower() && !this.shouldShowBulk()) return;
+    if (!this.options?.show_power && !this.options?.show_bulk) return;
 
     const tooltipWrapper = document.getElementById("tooltipwrapper");
     const tooltipBody = tooltipWrapper?.querySelector(".tooltipinner .tooltip");
@@ -1605,7 +1508,7 @@ const subtool = {
     if (!species) return;
 
     // Add bulk display to top right of tooltip
-    if (this.shouldShowBulk()) {
+    if (this.options?.show_bulk) {
       let bulkElement;
       
       // Try to calculate actual bulk values first
@@ -1637,7 +1540,7 @@ const subtool = {
     }
 
     // Add power values to moves
-    if (this.shouldShowPower()) {
+    if (this.options?.show_power) {
       const moveElements = tooltipBody.querySelectorAll("br");
       moveElements.forEach((br) => {
         const textNode = br.previousSibling;
@@ -1709,7 +1612,7 @@ const subtool = {
 
   getStats: function ({ pokemonSet, serverPokemon, clientPokemon }) {
     // If we're in battle and the setting is enabled, use modified stats
-    if (this.shouldShowModifiedStatsInBattle() && room.battle && serverPokemon) {
+    if (this.options?.show_modified_stats_in_battle && room.battle && serverPokemon) {
       const modifiedStats = room.battle.scene.tooltips.calculateModifiedStats(clientPokemon, serverPokemon);
       return {
         hp: serverPokemon.maxhp,
