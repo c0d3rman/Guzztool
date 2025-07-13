@@ -703,8 +703,6 @@ const subtool = {
     if (!this.shouldShowPowerInSearch()) return;
     if (!room.curSet) return;
 
-    this.log.debug("Updating move search displays");
-
     const species = room.curTeam.dex.species.get(room.curSet.species);
     if (!species) return;
 
@@ -779,8 +777,6 @@ const subtool = {
 
   updatePokemonSearchDisplays: function (room) {
     if (!this.shouldShowBulkInSearch()) return;
-
-    this.log.debug("Updating pokemon search displays");
 
     // Find all pokemon entries in the search results
     const pokemonEntries = room.el.querySelectorAll(
@@ -1267,6 +1263,7 @@ const subtool = {
     const defender = new window.calc.Pokemon(calcGen, 'Mew', {
       level: 100,
       nature: 'Hardy',
+      item: 'Poke Ball', // for Knock Off (we want to show boosted BP)
       overrides: {
         types: ['???'], // Typeless to avoid type interactions
         stats: {
@@ -1329,6 +1326,17 @@ const subtool = {
         break;
       
       default:
+        break;
+    }
+
+    // Autoset status based on item
+    // Same as above, calc autosets these via UI so we need to hardcode them here
+    switch (attacker.item) {
+      case "Flame Orb":
+        attacker.status = "brn";
+        break;
+      case "Toxic Orb":
+        attacker.status = "tox";
         break;
     }
     
@@ -1412,6 +1420,11 @@ const subtool = {
     // Apply all modifiers from the calculation
     if (result.allModifiers && result.allModifiers.length > 0) {
       result.allModifiers.forEach(modifier => {
+        // Special case: some steps (e.g. Facade) both modify BP and set desc.moveBP
+        // So instead of double-counting, we skip
+        if (Object.keys(modifier.reasons).includes('moveBP')) {
+          return;
+        }
         components.push({
           id: 'modifier',
           value: modifier.mod / 4096,
