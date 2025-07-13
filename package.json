@@ -34,6 +34,10 @@
     "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1",
     "webpack-entry-plus": "^1.0.19",
-    "webpack-remove-empty-scripts": "^1.0.4"
+    "webpack-remove-empty-scripts": "^1.0.4",
+    "webpack-sources": "^3.3.3"
+  },
+  "dependencies": {
+    "@smogon/calc": "^0.10.0"
   }
 }

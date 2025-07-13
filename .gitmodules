@@ -1,3 +1,6 @@
 [submodule "webext-bridge"]
 	path = webext-bridge
 	url = https://github.com/serversideup/webext-bridge.git
+[submodule "src/subtools/scythers_mantis_estimation/damage-calc-lib"]
+	path = src/subtools/scythers_mantis_estimation/damage-calc-lib
+	url = https://github.com/smogon/damage-calc.git

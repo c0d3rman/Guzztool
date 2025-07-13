@@ -48,6 +48,12 @@
             "default": false
         },
         {
+            "id": "use_damage_calc",
+            "type": "boolean",
+            "title": "Use damage calculator for accurate modifiers (items, abilities, field effects)",
+            "default": true
+        },
+        {
             "id": "physical_color",
             "type": "string",
             "title": "Physical color",

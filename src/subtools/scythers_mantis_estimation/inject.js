@@ -1,4 +1,58 @@
 import { FunctionListenerProxy } from "@guzztool/util/ListenerProxy";
+import * as calc from '@smogon/calc';
+
+// Create a modifier tracking system
+class ModifierTracker {
+  constructor() {
+    this.currentMods = [];
+    this.lastCalculation = null;
+  }
+  
+  startTracking() {
+    this.currentMods = [];
+  }
+  
+  addModifier(mod, type, reasons) {
+    this.currentMods.push({ mod, type, reasons });
+  }
+  
+  finishTracking() {
+    const result = [...this.currentMods];
+    this.lastCalculation = result;
+    this.currentMods = [];
+    return result;
+  }
+}
+
+// Initialize the tracker
+window._modTracker = new ModifierTracker();
+
+// Proxy the calculate function to track modifiers
+const calculateProxy = new FunctionListenerProxy(
+  calc.calculate,
+  (originalFn, ...args) => {
+    // Clear the global damageCalcModLog before calculation
+    window.damageCalcModLog = [];
+    window._modTracker.startTracking();
+    
+    // Run the original calculation
+    const result = originalFn(...args);
+    
+    // Transfer damageCalcModLog to our tracker
+    window.damageCalcModLog.forEach(entry => {
+      window._modTracker.addModifier(entry.mod, entry.type || 'at', entry.reasons);
+    });
+    
+    // Store the modifiers on the result object
+    result.allModifiers = window._modTracker.finishTracking();
+    
+    return result;
+  }
+);
+calc.calculate = calculateProxy.proxy;
+
+// Export calc to window
+window.calc = calc;
 
 const MIN_ROLL_SUFFIX = "m";
 
@@ -19,6 +73,7 @@ const subtool = {
       { file_path: "styles.css" },
       "content-script"
     );
+
 
     if (!this.roomListener) return;
 
@@ -78,16 +133,103 @@ const subtool = {
   isMinRoll: function () {
     return this.options?.min_roll === true;
   },
+  
+  shouldUseDamageCalc: function () {
+    // Allow users to opt out of damage calc if they want
+    return this.options?.use_damage_calc !== false && window.calc;
+  },
+  
+  getGeneration: function () {
+    // Get generation from current context
+    if (room.battle) {
+      return room.battle.gen;
+    }
+    if (room.curTeam?.dex?.gen) {
+      return room.curTeam.dex.gen;
+    }
+    if (room.dex?.gen) {
+      return room.dex.gen;
+    }
+    // Use global Dex as fallback
+    if (window.Dex?.gen) {
+      return window.Dex.gen;
+    }
+    return 9; // Final fallback
+  },
 
   extractFormatId: function (roomId) {
     // Extract format ID from room ID like "battle-gen9randombattle-2394686319"
     return roomId.match(/battle-([^-]+)-\d+/)?.[1] || null;
   },
 
-  calculateBulkRange: function (species, dex, formatId) {
+  calculateBulkRange: function (species, _dex, formatId, level = null) {
     if (!formatId) return null;
 
+    // Determine level to use
+    const pokemonLevel = level || 100;
+
+    // Use damage calc if available
+    if (window.calc && this.shouldUseDamageCalc()) {
+      try {
+        const gen = this.getGeneration();
+        // In the minified version, Generations is a property with a get method
+        const calcGen = window.calc.Generations.get(gen);
+        
+        // Calculate minimum bulk (0 EVs, neutral nature)
+        const minPokemon = new window.calc.Pokemon(calcGen, species.name, {
+          level: pokemonLevel,
+          evs: { hp: 0, def: 0, spd: 0 },
+          nature: 'Hardy',
+        });
+        
+        // Calculate maximum physical bulk (252 HP, 252+ Def)
+        const maxPhysPokemon = new window.calc.Pokemon(calcGen, species.name, {
+          level: pokemonLevel,
+          evs: { hp: 252, def: 252 },
+          nature: 'Bold', // +Def nature
+        });
+        
+        // Calculate maximum special bulk (252 HP, 252+ SpD)
+        const maxSpecPokemon = new window.calc.Pokemon(calcGen, species.name, {
+          level: pokemonLevel,
+          evs: { hp: 252, spd: 252 },
+          nature: 'Calm', // +SpD nature
+        });
+        
+        return {
+          physical: {
+            min: this.formatValue(minPokemon.stats.hp * minPokemon.stats.def),
+            max: this.formatValue(maxPhysPokemon.stats.hp * maxPhysPokemon.stats.def),
+            minHp: minPokemon.stats.hp,
+            minDef: minPokemon.stats.def,
+            maxHp: maxPhysPokemon.stats.hp,
+            maxDef: maxPhysPokemon.stats.def
+          },
+          special: {
+            min: this.formatValue(minPokemon.stats.hp * minPokemon.stats.spd),
+            max: this.formatValue(maxSpecPokemon.stats.hp * maxSpecPokemon.stats.spd),
+            minHp: minPokemon.stats.hp,
+            minSpd: minPokemon.stats.spd,
+            maxHp: maxSpecPokemon.stats.hp,
+            maxSpd: maxSpecPokemon.stats.spd
+          },
+          level: pokemonLevel
+        };
+      } catch (e) {
+        this.log.debug('Damage calc failed for bulk range, using fallback:', e);
+        return this.calculateBulkRangeFallback(species, _dex, formatId, pokemonLevel);
+      }
+    }
+    
+    return this.calculateBulkRangeFallback(species, _dex, formatId, pokemonLevel);
+  },
+  
+  calculateBulkRangeFallback: function (species, _dex, formatId, level = 100) {
+    // BattleStatGuesser uses the format's default level
     const statGuesser = new BattleStatGuesser(formatId);
+    
+    // Note: BattleStatGuesser doesn't support custom levels in its getStat method,
+    // so we're limited to the format's default level for the fallback
     
     // Calculate minimum bulk (0 EVs, 31 IVs, neutral nature)
     const minSet = { species: species.id, moves: [] };
@@ -106,24 +248,25 @@ const subtool = {
     const specialMin = this.formatValue(minHp * minSpd);
     const specialMax = this.formatValue(maxHp * maxSpd);
     
-          return {
-        physical: {
-          min: physicalMin,
-          max: physicalMax,
-          minHp: minHp,
-          minDef: minDef,
-          maxHp: maxHp,
-          maxDef: maxDef
-        },
-        special: {
-          min: specialMin,
-          max: specialMax,
-          minHp: minHp,
-          minSpd: minSpd,
-          maxHp: maxHp,
-          maxSpd: maxSpd
-        }
-      };
+    return {
+      physical: {
+        min: physicalMin,
+        max: physicalMax,
+        minHp: minHp,
+        minDef: minDef,
+        maxHp: maxHp,
+        maxDef: maxDef
+      },
+      special: {
+        min: specialMin,
+        max: specialMax,
+        minHp: minHp,
+        minSpd: minSpd,
+        maxHp: maxHp,
+        maxSpd: maxSpd
+      },
+      level: level
+    };
   },
 
   initTooltip: function () {
@@ -152,13 +295,13 @@ const subtool = {
   },
 
   getBulkTooltipHTML: function (type, bulkData) {
-    const statName = type === "physical" ? "Def" : "SpD";
-    const statValue = type === "physical" ? bulkData.def : bulkData.spd;
+    const statName = type === "Physical" ? "Def" : "SpD";
+    const statValue = type === "Physical" ? bulkData.def : bulkData.spd;
     
     const bulkValue = parseFloat(bulkData.value);
     const powerValue = 4.0;
     const percent = Math.round((powerValue / bulkValue) * 100);
-    const color = type === "physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
+    const color = type === "Physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
     const rollType = this.isMinRoll() ? "min roll" : "max roll";
     const powerSuffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
     const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
@@ -171,7 +314,7 @@ const subtool = {
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${
-        type === "physical" ? "Physical" : "Special"
+        type === "Physical" ? "Physical" : "Special"
       } Bulk</h4>
       <p class="mantis-tooltip-content">(${
         bulkData.hp
@@ -182,7 +325,7 @@ const subtool = {
   },
 
   getPowerTooltipHTML: function (type, powerData) {
-    const typeDisplay = type === "physical" ? "Physical" : "Special";
+    const typeDisplay = type === "Physical" ? "Physical" : "Special";
 
     if (powerData.value === "?") {
       return `
@@ -192,24 +335,60 @@ const subtool = {
       `;
     }
 
-    const attackStatName = type === "Physical" ? "Atk" : "SpA";
-    const stabMultiplier = powerData.hasSTAB ? " * 1.5" : "";
+    // Get the proper stat name (handles Body Press, Foul Play, etc.)
+    const statNameMap = {
+      'atk': 'Atk',
+      'def': 'Def',
+      'spa': 'SpA',
+      'spd': 'SpD',
+      'spe': 'Spe'
+    };
+    const attackStatName = statNameMap[powerData.attackStatName] || 'Atk';
     const rollMultiplier = this.getRollMultiplier();
     const suffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
     const minRollExplanation = this.isMinRoll()
       ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>`
       : "";
     
+    // Create a calculation string with all modifiers
+    let calculationParts = [`${powerData.attackStat} ${attackStatName}`, `${powerData.basePower} BP`];
+    
+    // Add STAB if applicable
+    if (powerData.hasSTAB) {
+      calculationParts.push("1.5 (STAB)");
+    }
+    
+    // Function to extract the most relevant part of a reason
+    const getReasonValue = (reasons) => {
+      if (!reasons || Object.keys(reasons).length === 0) return "";
+      
+      // Special case because isCritical shows up as {"isCritical": true}
+      if ("isCritical" in reasons) reasons["isCritical"] = "Crit";
+      
+      return " (" + Object.values(reasons).join("+") + ")";
+    };
+    
+    powerData.allModifiers.forEach(mod => {
+      const multiplier = (mod.mod / 4096).toFixed(2);
+      const reason = getReasonValue(mod.reasons);
+      calculationParts.push(`${multiplier}${reason}`);
+    });
+    
+    // Add roll multiplier and denominator
+    calculationParts.push(`${rollMultiplier} / 10000`);
+    
+    // Join with multiplication signs
+    const calculationString = calculationParts.join(" * ");
+    
     const powerValue = Math.round(powerData.value * 10) / 10;
     const percent = Math.round((powerValue / 10.0) * 100);
     const color = powerData.category === "Physical" ? this.getColors().PHYSICAL : this.getColors().SPECIAL;
-    const rollType = this.isMinRoll() ? "min roll" : "max roll";
-    const exampleText = `e.g. <span style="color: ${color}">${powerData.value}${suffix}</span> power vs. <span style="color: ${color}">10.0</span> bulk → ${percent}% ${rollType}`;
+    const exampleText = `e.g. <span style="color: ${color}">${powerData.value}${suffix}</span> power vs. <span style="color: ${color}">10.0</span> bulk → ${percent}%`;
     
     return `
       <img src="${this.iconUrl}" class="mantis-tooltip-icon">
       <h4 class="mantis-tooltip-title">${typeDisplay} Power</h4>
-      <p class="mantis-tooltip-content">(${powerData.attackStat} ${attackStatName} * ${powerData.basePower} BP${stabMultiplier}) * ${rollMultiplier} / 10000 ≈ ${powerData.value}${suffix}</p>
+      <p class="mantis-tooltip-content">${calculationString} ≈ ${powerData.value}${suffix}</p>
       <p class="mantis-tooltip-example">${exampleText}</p>
       ${minRollExplanation}
     `;
@@ -429,8 +608,8 @@ const subtool = {
           return results.sort(([rowType1, id1], [rowType2, id2]) => {
             if (rowType1 === "pokemon" && rowType2 === "pokemon") {
               if (!room.curSet) return 0;
-              const bulk1 = getBulk(id1, "physical");
-              const bulk2 = getBulk(id2, "physical");
+              const bulk1 = getBulk(id1, "Physical");
+              const bulk2 = getBulk(id2, "Physical");
               if (isNaN(bulk1) && isNaN(bulk2)) return 0;
               if (isNaN(bulk1)) return sortOrder;
               if (isNaN(bulk2)) return -sortOrder;
@@ -446,8 +625,8 @@ const subtool = {
           return results.sort(([rowType1, id1], [rowType2, id2]) => {
             if (rowType1 === "pokemon" && rowType2 === "pokemon") {
               if (!room.curSet) return 0;
-              const bulk1 = getBulk(id1, "special");
-              const bulk2 = getBulk(id2, "special");
+              const bulk1 = getBulk(id1, "Special");
+              const bulk2 = getBulk(id2, "Special");
               if (isNaN(bulk1) && isNaN(bulk2)) return 0;
               if (isNaN(bulk1)) return sortOrder;
               if (isNaN(bulk2)) return -sortOrder;
@@ -745,6 +924,10 @@ const subtool = {
       const powerData = this.calculateMovePower({ pokemonSet: set }, move, species, dex);
       if (!powerData) return;
 
+      // if (move.id == "fireblast") {
+      //   this.log.debug('powerData:', powerData);
+      // }
+
       this.addPowerDisplayToInput(input, powerData, index, isTeamList);
     });
   },
@@ -775,12 +958,12 @@ const subtool = {
 
   addTooltipHandlers: function (bulkElement, bulkValues, isTeamList) {
     const physBulkSpan = bulkElement.querySelector(
-      '[data-bulk-type="physical"]'
+      '[data-bulk-type="Physical"]'
     );
     this.addTooltipToElement(physBulkSpan, "physical-bulk", bulkValues.physical, isTeamList);
 
     const specBulkSpan = bulkElement.querySelector(
-      '[data-bulk-type="special"]'
+      '[data-bulk-type="Special"]'
     );
     this.addTooltipToElement(specBulkSpan, "special-bulk", bulkValues.special, isTeamList);
   },
@@ -793,14 +976,14 @@ const subtool = {
     const physBulk = document.createElement("span");
     physBulk.textContent = bulkValues.physical.value;
     physBulk.style.color = colors.PHYSICAL;
-    physBulk.dataset.bulkType = "physical";
+    physBulk.dataset.bulkType = "Physical";
 
     const separator = document.createTextNode(" / ");
 
     const specBulk = document.createElement("span");
     specBulk.textContent = bulkValues.special.value;
     specBulk.style.color = colors.SPECIAL;
-    specBulk.dataset.bulkType = "special";
+    specBulk.dataset.bulkType = "Special";
 
     bulkDisplay.appendChild(physBulk);
     bulkDisplay.appendChild(separator);
@@ -844,19 +1027,22 @@ const subtool = {
     [physBulkMin, physSeparator, physBulkMax, separator, specBulkMin, specSeparator, specBulkMax]
       .forEach(el => bulkDisplay.appendChild(el));
 
+    // Get level if available
+    const level = bulkRangeValues.level || 100;
+    
     // Add tooltip handlers for min values
     const minBulkData = {
       physical: {
         value: bulkRangeValues.physical.min,
         hp: bulkRangeValues.physical.minHp,
         def: bulkRangeValues.physical.minDef,
-        note: `0 HP / 0 Def ${species.name} (Base HP: ${species.baseStats.hp} / Base Def: ${species.baseStats.def})`
+        note: `0 HP / 0 Def Lv${level} ${species.name} (Base HP: ${species.baseStats.hp} / Base Def: ${species.baseStats.def})`
       },
       special: {
         value: bulkRangeValues.special.min,
         hp: bulkRangeValues.special.minHp,
         spd: bulkRangeValues.special.minSpd,
-        note: `0 HP / 0 SpD ${species.name} (Base HP: ${species.baseStats.hp} / Base SpD: ${species.baseStats.spd})`
+        note: `0 HP / 0 SpD Lv${level} ${species.name} (Base HP: ${species.baseStats.hp} / Base SpD: ${species.baseStats.spd})`
       }
     };
     this.addTooltipToElement(physBulkMin, "physical-bulk", minBulkData.physical, false);
@@ -868,13 +1054,13 @@ const subtool = {
         value: bulkRangeValues.physical.max,
         hp: bulkRangeValues.physical.maxHp,
         def: bulkRangeValues.physical.maxDef,
-        note: `252 HP / 252+ Def ${species.name} (Base HP: ${species.baseStats.hp} / Base Def: ${species.baseStats.def})`
+        note: `252 HP / 252+ Def Lv${level} ${species.name} (Base HP: ${species.baseStats.hp} / Base Def: ${species.baseStats.def})`
       },
       special: {
         value: bulkRangeValues.special.max,
         hp: bulkRangeValues.special.maxHp,
         spd: bulkRangeValues.special.maxSpd,
-        note: `252 HP / 252+ SpD ${species.name} (Base HP: ${species.baseStats.hp} / Base SpD: ${species.baseStats.spd})`
+        note: `252 HP / 252+ SpD Lv${level} ${species.name} (Base HP: ${species.baseStats.hp} / Base SpD: ${species.baseStats.spd})`
       }
     };
     this.addTooltipToElement(physBulkMax, "physical-bulk", maxBulkData.physical, false);
@@ -899,6 +1085,128 @@ const subtool = {
   },
 
   calculateBulkValues: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
+    // Use damage calc if available
+    if (window.calc && this.shouldUseDamageCalc()) {
+      try {
+        const gen = this.getGeneration();
+        // In the minified version, Generations is a property with a get method
+        const calcGen = window.calc.Generations.get(gen);
+        
+        // Create Pokemon object for calculation
+        const set = pokemonSet || {};
+        const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+        if (!stats) return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
+        
+        const pokemonOptions = {
+          level: set.level || serverPokemon?.level || clientPokemon?.level || 100,
+          evs: set.evs || {},
+          ivs: set.ivs || {},
+          nature: set.nature || 'Hardy',
+          ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || species.abilities?.[0] || '',
+          item: set.item || serverPokemon?.item || clientPokemon?.item || '',
+          boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
+          curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
+        };
+        
+        // For bulk calculation, we need to simulate incoming damage
+        // Create a neutral attacker to test defense
+        const neutralAttacker = new window.calc.Pokemon(calcGen, 'Mew', {
+          level: 100,
+          nature: 'Hardy',
+        });
+        
+        const defender = new window.calc.Pokemon(calcGen, species.name, pokemonOptions);
+        
+        // Calculate with physical and special moves to get defense modifiers
+        const physicalMove = new window.calc.Move(calcGen, 'Tackle');
+        const specialMove = new window.calc.Move(calcGen, 'Water Gun');
+        
+        // Set up field conditions based on current battle state
+        const fieldOptions = {};
+        
+        // Check for weather
+        if (room.battle?.weather) {
+          const weatherMap = {
+            'sunnyday': 'Sun',
+            'raindance': 'Rain',
+            'sandstorm': 'Sand',
+            'hail': 'Hail',
+            'snow': 'Snow',
+            'harshsunshine': 'Harsh Sunshine',
+            'heavyrain': 'Heavy Rain',
+            'strongwinds': 'Strong Winds'
+          };
+          fieldOptions.weather = weatherMap[room.battle.weather] || undefined;
+        }
+        
+        // Check for terrain
+        if (room.battle?.terrain) {
+          const terrainMap = {
+            'electricterrain': 'Electric',
+            'grassyterrain': 'Grassy',
+            'mistyterrain': 'Misty',
+            'psychicterrain': 'Psychic'
+          };
+          fieldOptions.terrain = terrainMap[room.battle.terrain] || undefined;
+        }
+        
+        // Check for screens and other field effects
+        if (serverPokemon?.side || clientPokemon?.side) {
+          const side = serverPokemon?.side || clientPokemon?.side;
+          fieldOptions.defenderSide = {
+            isReflect: side.sideConditions?.reflect,
+            isLightScreen: side.sideConditions?.lightscreen,
+            isAuroraVeil: side.sideConditions?.auroraveil,
+            isSR: side.sideConditions?.stealthrock,
+            spikes: side.sideConditions?.spikes || 0,
+          };
+        }
+        
+        const field = new window.calc.Field(fieldOptions);
+        
+        // Run calculations to get defense stats with all modifiers
+        // We run these calculations to ensure all modifiers are applied to the defender's stats
+        window.calc.calculate(calcGen, neutralAttacker, defender, physicalMove, field);
+        window.calc.calculate(calcGen, neutralAttacker, defender, specialMove, field);
+        
+        // Extract the modified defense values from the calculations
+        // The calc applies all modifiers internally
+        const hp = defender.stats.hp;
+        const def = defender.stats.def;
+        const spd = defender.stats.spd;
+        
+        const physicalBulk = this.formatValue(hp * def);
+        const specialBulk = this.formatValue(hp * spd);
+        
+        return {
+          physical: {
+            value: physicalBulk,
+            hp: hp,
+            def: def,
+          },
+          special: {
+            value: specialBulk,
+            hp: hp,
+            spd: spd,
+          },
+        };
+      } catch (e) {
+        this.log.debug('Damage calc failed for bulk, using fallback:', e);
+        this.log.debug('pokemonSet:', pokemonSet);
+        this.log.debug('serverPokemon:', serverPokemon);
+        this.log.debug('clientPokemon:', clientPokemon);
+        this.log.debug('species:', species);
+        this.log.debug('dex:', dex);
+        this.log.debug('calc object:', window.calc);
+        this.log.debug('calc.Generations:', window.calc?.Generations);
+        return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
+      }
+    }
+    
+    return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
+  },
+  
+  calculateBulkValuesFallback: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
     const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
     if (!stats) return null;
     
@@ -945,9 +1253,196 @@ const subtool = {
       return null;
     }
 
+    // Use damage calc if available
+    if (window.calc && this.shouldUseDamageCalc()) {
+      try {
+        const gen = this.getGeneration();
+        // In the minified version, Generations is a property with a get method
+        const calcGen = window.calc.Generations.get(gen);
+        
+        // Create attacker Pokemon
+        const set = pokemonSet || {};
+        const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+        if (!stats) return this.calculateMovePowerFallback({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex);
+        
+        const attackerOptions = {
+          level: set.level || serverPokemon?.level || 100,
+          evs: set.evs || {},
+          ivs: set.ivs || {},
+          nature: set.nature || 'Hardy',
+          ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || '',
+          item: set.item || serverPokemon?.item || clientPokemon?.item || '',
+          boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
+          curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
+        };
+        
+        const attacker = new window.calc.Pokemon(calcGen, species.name, attackerOptions);
+        
+        // Create a neutral defender for power calculation
+        const defender = new window.calc.Pokemon(calcGen, 'Mew', {
+          level: 100,
+          nature: 'Hardy',
+          overrides: {
+            types: ['???'],
+          }
+        });
+        
+        // Create move
+        const calcMove = new window.calc.Move(calcGen, move.name);
+        
+        // Set up field conditions
+        const fieldOptions = {};
+
+        // Check for weather-setting or terrain-setting abilities
+        // Unfortunately since the calc auto-sets these via UI we need to hardcode them here
+        switch (attacker.ability) {
+          // Weather
+          case 'Drizzle':
+            fieldOptions.weather = 'Rain';
+            break;
+          case 'Drought':
+            fieldOptions.weather = 'Sun';
+            break;
+          case 'Sand Stream':
+            fieldOptions.weather = 'Sand';
+            break;
+          case 'Snow Warning':
+            if (gen >= 9) {
+              fieldOptions.weather = 'Snow';
+            } else {
+              fieldOptions.weather = 'Hail';
+            }
+            break;
+          case 'Primordial Sea':
+            fieldOptions.weather = 'Heavy Rain';
+            break;
+          case 'Desolate Land':
+            fieldOptions.weather = 'Harsh Sunshine';
+            break;
+          case 'Orichalcum Pulse':
+            fieldOptions.weather = 'Sun';
+            break;
+          
+          // Terrain
+          case 'Electric Surge':
+            fieldOptions.terrain = 'Electric';
+            break;
+          case 'Grassy Surge':
+            fieldOptions.terrain = 'Grassy';
+            break;
+          case 'Misty Surge':
+            fieldOptions.terrain = 'Misty';
+            break;
+          case 'Psychic Surge':
+            fieldOptions.terrain = 'Psychic';
+            break;
+          case 'Hadron Engine':
+            fieldOptions.terrain = 'Electric';
+            break;
+          
+          default:
+            break;
+        }
+        
+        // Check for attacker side conditions (helping hand, battery, etc.)
+        if (serverPokemon?.side || clientPokemon?.side) {
+          const side = serverPokemon?.side || clientPokemon?.side;
+          fieldOptions.attackerSide = {
+            isHelpingHand: side.sideConditions?.helpinghand,
+            isBattery: false, // Would need to check for ally with Battery ability
+            isPowerSpot: false, // Would need to check for ally with Power Spot ability
+          };
+        }
+        
+        const field = new window.calc.Field(fieldOptions);
+        
+        // Calculate damage
+        const result = window.calc.calculate(calcGen, attacker, defender, calcMove, field);
+        this.log.debug('Result:', result);
+        
+        // Extract power information
+        const isPhysical = result.move.category === "Physical";
+        
+        // Get the actual stat used by the move based on overrideOffensiveStat
+        let attackStat;
+        if (result.move.overrideOffensiveStat) {
+          attackStat = result.attacker.stats[result.move.overrideOffensiveStat];
+        } else if (isPhysical) {
+          attackStat = result.attacker.stats.atk;
+        } else {
+          attackStat = result.attacker.stats.spa;
+        }
+        
+        const basePower = result.move.bp;
+        const hasSTAB = attacker.types.includes(result.move.type);
+        const rollMultiplier = this.getRollMultiplier();
+        
+        // Get the actual base power after modifiers
+        let modifiedBasePower = basePower;
+        
+        // Apply base power modifiers from the calculation
+        if (result.basePowerModifiers && result.basePowerModifiers.length > 0) {
+          this.log.debug('Base power modifiers:', result.basePowerModifiers);
+          result.basePowerModifiers.forEach(modifier => {
+            this.log.debug('Applying BP modifier:', modifier);
+            // In the damage calc, 4096 = 1.0x
+            modifiedBasePower = modifiedBasePower * modifier.mod / 4096;
+          });
+          this.log.debug('Modified base power:', modifiedBasePower);
+        }
+        
+        // Start with base calculation using modified base power
+        let power = attackStat * modifiedBasePower * rollMultiplier;
+        
+        // Apply STAB
+        if (hasSTAB) {
+          power *= 1.5;
+        }
+        
+        // Apply all modifiers from the calculation
+        if (result.allModifiers && result.allModifiers.length > 0) {
+          result.allModifiers.forEach(modifier => {
+            power = power * modifier.mod / 4096;
+          });
+        }
+
+        this.log.debug('Move:', move.name);
+        this.log.debug('Modifiers:', result.allModifiers);
+        
+        return {
+          category: result.move.category,
+          move: move.name,
+          attackStat: attackStat,
+          attackStatName: result.move.overrideOffensiveStat || (isPhysical ? 'atk' : 'spa'),
+          basePower: basePower,
+          modifiedBasePower: Math.round(modifiedBasePower),
+          hasSTAB: hasSTAB,
+          allModifiers: result.allModifiers || [],
+          value: this.formatValue(power, basePower),
+        };
+      } catch (e) {
+        this.log.debug('Damage calc failed for move power, using fallback:', e);
+        return this.calculateMovePowerFallback({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex);
+      }
+    }
+    
+    return this.calculateMovePowerFallback({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex);
+  },
+  
+  calculateMovePowerFallback: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species) {
     const isPhysical = move.category === "Physical";
     const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
-    const attackStat = isPhysical ? stats.atk : stats.spa;
+    
+    // Handle moves with overrideOffensiveStat (like Body Press)
+    let attackStat;
+    if (move.overrideOffensiveStat) {
+      attackStat = stats[move.overrideOffensiveStat];
+    } else if (isPhysical) {
+      attackStat = stats.atk;
+    } else {
+      attackStat = stats.spa;
+    }
+    
     const hasSTAB = species.types.includes(move.type);
     const rollMultiplier = this.getRollMultiplier();
 
@@ -968,7 +1463,9 @@ const subtool = {
 
     return {
       category: move.category,
+      move: move.name,
       attackStat: attackStat,
+      attackStatName: move.overrideOffensiveStat || (isPhysical ? 'atk' : 'spa'),
       basePower: basePower,
       hasSTAB: hasSTAB,
       value: this.formatValue(power, basePower),
@@ -1148,7 +1645,9 @@ const subtool = {
       } else if (type === "pokemon" || type === "activepokemon") {
         // If we can't get actual stats, calculate bulk ranges for pokemon and activepokemon tooltips
         const formatId = this.extractFormatId(room.id);
-        const bulkRangeValues = this.calculateBulkRange(species, battle.dex, formatId);
+        // Try to get the Pokemon's actual level
+        const pokemonLevel = clientPokemon?.level || serverPokemon?.level || null;
+        const bulkRangeValues = this.calculateBulkRange(species, battle.dex, formatId, pokemonLevel);
         
         if (bulkRangeValues) {
           bulkElement = this.createBulkRangeDisplayElement(bulkRangeValues, species);
@@ -1193,6 +1692,7 @@ const subtool = {
       });
     }
   },
+
 
   // Unified helper for formatting values with consistent decimal places
   formatValue: function (value, basePower = null) {

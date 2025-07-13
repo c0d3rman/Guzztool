@@ -19,6 +19,7 @@ import getTargetFilepath from 'handlebars-webpack-plugin/utils/getTargetFilepath
 import entryPlus from 'webpack-entry-plus';
 import { glob } from 'glob';
 import SUBTOOL_ORDER from './src/subtools/subtool_order.json' with { type: "json" };
+import DamageCalcModLoggerPlugin from './webpack-plugins/damage-calc-mod-logger-plugin.js';
 
 
 // __dirname is not available in ESModules so we shim it
@@ -149,10 +150,11 @@ const exportForTarget = BUILD_TARGET => {
 
     const isStaticFile = filepath => !(
         filepath == 'src/manifest.json' || // The manifest is not static
-        (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath)) || // JS files are not static unless they're in a lib/ folder
+        (filepath.endsWith('.js') && !/(?:^|\/)lib\//i.test(filepath) && !filepath.includes('damage-calc-lib')) || // JS files are not static unless they're in a lib/ folder or damage-calc-lib
         filepath.endsWith('.handlebars') || // Handlebars templates are not static
         Object.values(entry).flat().some(e => path.relative(e, filepath) == '') || // Any file which is an entry point is not static (since it gets built)
-        path.basename(filepath) == '.DS_Store' // .DS_Store files are not static
+        path.basename(filepath) == '.DS_Store' || // .DS_Store files are not static
+        filepath.includes('.git') // Git files are not static
     );
     const copyPatterns = [
         // Copy all static files
@@ -238,6 +240,7 @@ const exportForTarget = BUILD_TARGET => {
     const optimization = __DEV__ ? {} : {
         minimize: true,
         minimizer: [new TerserPlugin({
+            exclude: /damage-calc\.js$/, // Don't minify the damage-calc bundle
             "terserOptions": {
                 "module": true, // this lets us use top-level awaits
                 "mangle": { "reserved": ["browser", "chrome", "app", "battle"] } // Some variables are defined as globals by Showdown, we don't want to minify them
@@ -258,6 +261,7 @@ const exportForTarget = BUILD_TARGET => {
         new CopyPlugin({ patterns: copyPatterns }),
         new RemoveEmptyScriptsPlugin(),
         new HandlebarsPlugin(handlebarsPluginConfig),
+        new DamageCalcModLoggerPlugin(),
     ];
     if (BUILD_TARGET == 'chrome') {
         if (!__DEV__) {
