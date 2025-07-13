@@ -203,6 +203,17 @@ const subtool = {
     });
   },
 
+  // Common tooltip helper method
+  createTooltipHTML: function({ title, content, example, additionalHtml = '' }) {
+    return `
+      <img src="${this.iconUrl}" class="mantis-tooltip-icon">
+      <h4 class="mantis-tooltip-title">${title}</h4>
+      <p class="mantis-tooltip-content">${content}</p>
+      <p class="mantis-tooltip-example">${example}</p>
+      ${additionalHtml}
+    `;
+  },
+
   getBulkTooltipHTML: function (type, bulkData) {
     const statName = type === "Physical" ? "Def" : "SpD";
     const statValue = type === "Physical" ? bulkData.def : bulkData.spd;
@@ -220,28 +231,23 @@ const subtool = {
       noteHtml = `<p class="mantis-tooltip-note">Assuming ${bulkData.note}</p>`;
     }
     
-    return `
-      <img src="${this.iconUrl}" class="mantis-tooltip-icon">
-      <h4 class="mantis-tooltip-title">${
-        type === "Physical" ? "Physical" : "Special"
-      } Bulk</h4>
-      <p class="mantis-tooltip-content">(${
-        bulkData.hp
-      } HP * ${statValue} ${statName}) / 10000 ≈ ${bulkData.value}</p>
-      <p class="mantis-tooltip-example">${exampleText}</p>
-      ${noteHtml}
-    `;
+    return this.createTooltipHTML({
+      title: `${type} Bulk`,
+      content: `(${bulkData.hp} HP * ${statValue} ${statName}) / 10000 ≈ ${bulkData.value}`,
+      example: exampleText,
+      additionalHtml: noteHtml
+    });
   },
 
   getPowerTooltipHTML: function (type, powerData) {
     const typeDisplay = type === "Physical" ? "Physical" : "Special";
 
     if (powerData.value === "?") {
-      return `
-        <img src="${this.iconUrl}" class="mantis-tooltip-icon">
-        <h4 class="mantis-tooltip-title">${typeDisplay} Power</h4>
-        <p class="mantis-tooltip-content">Variable Power</p>
-      `;
+      return this.createTooltipHTML({
+        title: `${typeDisplay} Power`,
+        content: "Variable Power",
+        example: ""
+      });
     }
 
     const suffix = this.options?.min_roll ? MIN_ROLL_SUFFIX : "";
@@ -292,13 +298,12 @@ const subtool = {
     const color = powerData.category === "Physical" ? this.options?.physical_color : this.options?.special_color;
     const exampleText = `e.g. <span style="color: ${color}">${powerData.value}${suffix}</span> power vs. <span style="color: ${color}">10.0</span> bulk → ${percent}%`;
     
-    return `
-      <img src="${this.iconUrl}" class="mantis-tooltip-icon">
-      <h4 class="mantis-tooltip-title">${typeDisplay} Power</h4>
-      <p class="mantis-tooltip-content">${calculationString} ≈ ${powerData.value}${suffix}</p>
-      <p class="mantis-tooltip-example">${exampleText}</p>
-      ${minRollExplanation}
-    `;
+    return this.createTooltipHTML({
+      title: `${typeDisplay} Power`,
+      content: `${calculationString} ≈ ${powerData.value}${suffix}`,
+      example: exampleText,
+      additionalHtml: minRollExplanation
+    });
   },
 
   showTooltip: function (event, type, dataId) {
@@ -1317,6 +1322,17 @@ const subtool = {
         id: 'stabMultiplier',
         value: stabMultiplier,
         text: stabText,
+      });
+    }
+
+    // Apply burn
+    if (result.rawDesc.isBurned) {
+      components.push({
+        id: 'modifier',
+        value: 0.5,
+        reasons: {
+          isBurned: "Burned",
+        },
       });
     }
     
