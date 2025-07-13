@@ -351,25 +351,38 @@ const subtool = {
       : "";
     
     // Create a calculation string with all modifiers
-    let calculationParts = [`${powerData.attackStat} ${attackStatName}`, `${powerData.basePower} BP`];
+    let calculationParts = [`${powerData.attackStat} ${attackStatName}`];
     
-    // Add STAB if applicable
-    if (powerData.hasSTAB) {
-      calculationParts.push("1.5 (STAB)");
+    // Add base power, with an asterisk if it differs from pre-mod base power
+    const basePowerText = powerData.descBasePower && powerData.descBasePower !== powerData.basePower
+      ? `${powerData.descBasePower}<sup>†</sup> BP` 
+      : `${powerData.basePower} BP`;
+    calculationParts.push(basePowerText);
+    
+    // Add STAB if applicable with the right multiplier and type
+    if (powerData.stabMultiplier !== 1.0) {
+      calculationParts.push(`${powerData.stabMultiplier} (${powerData.stabText})`);
     }
     
     // Function to extract the most relevant part of a reason
     const getReasonValue = (reasons) => {
       if (!reasons || Object.keys(reasons).length === 0) return "";
+
+      reasons = {...reasons}; // Copy b/c we're mutating
       
       // Special case because isCritical shows up as {"isCritical": true}
       if ("isCritical" in reasons) reasons["isCritical"] = "Crit";
+
+      // Special case for terrains
+      if ("terrain" in reasons) {
+        reasons["terrain"] = reasons["terrain"] + " Terrain";
+      }
       
       return " (" + Object.values(reasons).join("+") + ")";
     };
     
-    powerData.allModifiers.forEach(mod => {
-      const multiplier = (mod.mod / 4096).toFixed(2);
+    powerData.allModifiers?.forEach(mod => {
+      const multiplier = Math.round(mod.mod / 4096 * 100) / 100;
       const reason = getReasonValue(mod.reasons);
       calculationParts.push(`${multiplier}${reason}`);
     });
@@ -1253,222 +1266,149 @@ const subtool = {
       return null;
     }
 
-    // Use damage calc if available
-    if (window.calc && this.shouldUseDamageCalc()) {
-      try {
-        const gen = this.getGeneration();
-        // In the minified version, Generations is a property with a get method
-        const calcGen = window.calc.Generations.get(gen);
-        
-        // Create attacker Pokemon
-        const set = pokemonSet || {};
-        const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
-        if (!stats) return this.calculateMovePowerFallback({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex);
-        
-        const attackerOptions = {
-          level: set.level || serverPokemon?.level || 100,
-          evs: set.evs || {},
-          ivs: set.ivs || {},
-          nature: set.nature || 'Hardy',
-          ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || '',
-          item: set.item || serverPokemon?.item || clientPokemon?.item || '',
-          boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
-          curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
-        };
-        
-        const attacker = new window.calc.Pokemon(calcGen, species.name, attackerOptions);
-        
-        // Create a neutral defender for power calculation
-        const defender = new window.calc.Pokemon(calcGen, 'Mew', {
-          level: 100,
-          nature: 'Hardy',
-          overrides: {
-            types: ['???'],
-          }
-        });
-        
-        // Create move
-        const calcMove = new window.calc.Move(calcGen, move.name);
-        
-        // Set up field conditions
-        const fieldOptions = {};
-
-        // Check for weather-setting or terrain-setting abilities
-        // Unfortunately since the calc auto-sets these via UI we need to hardcode them here
-        switch (attacker.ability) {
-          // Weather
-          case 'Drizzle':
-            fieldOptions.weather = 'Rain';
-            break;
-          case 'Drought':
-            fieldOptions.weather = 'Sun';
-            break;
-          case 'Sand Stream':
-            fieldOptions.weather = 'Sand';
-            break;
-          case 'Snow Warning':
-            if (gen >= 9) {
-              fieldOptions.weather = 'Snow';
-            } else {
-              fieldOptions.weather = 'Hail';
-            }
-            break;
-          case 'Primordial Sea':
-            fieldOptions.weather = 'Heavy Rain';
-            break;
-          case 'Desolate Land':
-            fieldOptions.weather = 'Harsh Sunshine';
-            break;
-          case 'Orichalcum Pulse':
-            fieldOptions.weather = 'Sun';
-            break;
-          
-          // Terrain
-          case 'Electric Surge':
-            fieldOptions.terrain = 'Electric';
-            break;
-          case 'Grassy Surge':
-            fieldOptions.terrain = 'Grassy';
-            break;
-          case 'Misty Surge':
-            fieldOptions.terrain = 'Misty';
-            break;
-          case 'Psychic Surge':
-            fieldOptions.terrain = 'Psychic';
-            break;
-          case 'Hadron Engine':
-            fieldOptions.terrain = 'Electric';
-            break;
-          
-          default:
-            break;
-        }
-        
-        // Check for attacker side conditions (helping hand, battery, etc.)
-        if (serverPokemon?.side || clientPokemon?.side) {
-          const side = serverPokemon?.side || clientPokemon?.side;
-          fieldOptions.attackerSide = {
-            isHelpingHand: side.sideConditions?.helpinghand,
-            isBattery: false, // Would need to check for ally with Battery ability
-            isPowerSpot: false, // Would need to check for ally with Power Spot ability
-          };
-        }
-        
-        const field = new window.calc.Field(fieldOptions);
-        
-        // Calculate damage
-        const result = window.calc.calculate(calcGen, attacker, defender, calcMove, field);
-        this.log.debug('Result:', result);
-        
-        // Extract power information
-        const isPhysical = result.move.category === "Physical";
-        
-        // Get the actual stat used by the move based on overrideOffensiveStat
-        let attackStat;
-        if (result.move.overrideOffensiveStat) {
-          attackStat = result.attacker.stats[result.move.overrideOffensiveStat];
-        } else if (isPhysical) {
-          attackStat = result.attacker.stats.atk;
-        } else {
-          attackStat = result.attacker.stats.spa;
-        }
-        
-        const basePower = result.move.bp;
-        const hasSTAB = attacker.types.includes(result.move.type);
-        const rollMultiplier = this.getRollMultiplier();
-        
-        // Get the actual base power after modifiers
-        let modifiedBasePower = basePower;
-        
-        // Apply base power modifiers from the calculation
-        if (result.basePowerModifiers && result.basePowerModifiers.length > 0) {
-          this.log.debug('Base power modifiers:', result.basePowerModifiers);
-          result.basePowerModifiers.forEach(modifier => {
-            this.log.debug('Applying BP modifier:', modifier);
-            // In the damage calc, 4096 = 1.0x
-            modifiedBasePower = modifiedBasePower * modifier.mod / 4096;
-          });
-          this.log.debug('Modified base power:', modifiedBasePower);
-        }
-        
-        // Start with base calculation using modified base power
-        let power = attackStat * modifiedBasePower * rollMultiplier;
-        
-        // Apply STAB
-        if (hasSTAB) {
-          power *= 1.5;
-        }
-        
-        // Apply all modifiers from the calculation
-        if (result.allModifiers && result.allModifiers.length > 0) {
-          result.allModifiers.forEach(modifier => {
-            power = power * modifier.mod / 4096;
-          });
-        }
-
-        this.log.debug('Move:', move.name);
-        this.log.debug('Modifiers:', result.allModifiers);
-        
-        return {
-          category: result.move.category,
-          move: move.name,
-          attackStat: attackStat,
-          attackStatName: result.move.overrideOffensiveStat || (isPhysical ? 'atk' : 'spa'),
-          basePower: basePower,
-          modifiedBasePower: Math.round(modifiedBasePower),
-          hasSTAB: hasSTAB,
-          allModifiers: result.allModifiers || [],
-          value: this.formatValue(power, basePower),
-        };
-      } catch (e) {
-        this.log.debug('Damage calc failed for move power, using fallback:', e);
-        return this.calculateMovePowerFallback({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex);
-      }
-    }
+    const gen = this.getGeneration();
+    // In the minified version, Generations is a property with a get method
+    const calcGen = window.calc.Generations.get(gen);
     
-    return this.calculateMovePowerFallback({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex);
-  },
-  
-  calculateMovePowerFallback: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species) {
-    const isPhysical = move.category === "Physical";
+    // Create attacker Pokemon
+    const set = pokemonSet || {};
     const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+    if (!stats) return null;
     
-    // Handle moves with overrideOffensiveStat (like Body Press)
-    let attackStat;
-    if (move.overrideOffensiveStat) {
-      attackStat = stats[move.overrideOffensiveStat];
-    } else if (isPhysical) {
-      attackStat = stats.atk;
-    } else {
-      attackStat = stats.spa;
-    }
+    const attackerOptions = {
+      level: set.level || serverPokemon?.level || 100,
+      evs: set.evs || {},
+      ivs: set.ivs || {},
+      nature: set.nature || 'Hardy',
+      ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || '',
+      item: set.item || serverPokemon?.item || clientPokemon?.item || '',
+      boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
+      curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
+    };
     
-    const hasSTAB = species.types.includes(move.type);
-    const rollMultiplier = this.getRollMultiplier();
-
-    // Determine base power
-    let basePower = move.basePower;
-    if (room.battle && clientPokemon && serverPokemon) {
-      const tooltipText = room.battle.scene.tooltips.showMoveTooltip(move, "", clientPokemon, serverPokemon);
-      const basePowerMatch = tooltipText.match(/Base power: (\d+)/);
-      if (basePowerMatch) {
-        basePower = parseInt(basePowerMatch[1]);
+    const attacker = new window.calc.Pokemon(calcGen, species.name, attackerOptions);
+    
+    // Create a neutral defender for power calculation
+    const defender = new window.calc.Pokemon(calcGen, 'Mew', {
+      level: 100,
+      nature: 'Hardy',
+      overrides: {
+        types: ['???'], // Typeless to avoid type interactions
       }
+    });
+    
+    // Create move
+    const calcMove = new window.calc.Move(calcGen, move.name);
+    
+    // Set up field conditions
+    const fieldOptions = {};
+
+    // Check for weather-setting or terrain-setting abilities
+    // Unfortunately since the calc auto-sets these via UI we need to hardcode them here
+    switch (attacker.ability) {
+      // Weather
+      case 'Drizzle':
+        fieldOptions.weather = 'Rain';
+        break;
+      case 'Drought':
+        fieldOptions.weather = 'Sun';
+        break;
+      case 'Sand Stream':
+        fieldOptions.weather = 'Sand';
+        break;
+      case 'Snow Warning':
+        if (gen >= 9) {
+          fieldOptions.weather = 'Snow';
+        } else {
+          fieldOptions.weather = 'Hail';
+        }
+        break;
+      case 'Primordial Sea':
+        fieldOptions.weather = 'Heavy Rain';
+        break;
+      case 'Desolate Land':
+        fieldOptions.weather = 'Harsh Sunshine';
+        break;
+      case 'Orichalcum Pulse':
+        fieldOptions.weather = 'Sun';
+        break;
+      
+      // Terrain
+      case 'Electric Surge':
+        fieldOptions.terrain = 'Electric';
+        break;
+      case 'Grassy Surge':
+        fieldOptions.terrain = 'Grassy';
+        break;
+      case 'Misty Surge':
+        fieldOptions.terrain = 'Misty';
+        break;
+      case 'Psychic Surge':
+        fieldOptions.terrain = 'Psychic';
+        break;
+      case 'Hadron Engine':
+        fieldOptions.terrain = 'Electric';
+        break;
+      
+      default:
+        break;
+    }
+    
+    const field = new window.calc.Field(fieldOptions);
+    
+    // Calculate damage
+    const result = window.calc.calculate(calcGen, attacker, defender, calcMove, field);
+    
+    // Get the actual stat used by the move based on overrideOffensiveStat
+    let attackStat, attackStatName;
+    if (result.move.overrideOffensiveStat) {
+      attackStat = result.attacker.stats[result.move.overrideOffensiveStat];
+      attackStatName = result.move.overrideOffensiveStat;
+    } else if (result.move.category === "Physical") {
+      attackStat = result.attacker.stats.atk;
+      attackStatName = 'atk';
+    } else {
+      attackStat = result.attacker.stats.spa;
+      attackStatName = 'spa';
+    }
+    
+    const rollMultiplier = this.getRollMultiplier();
+    
+    // Apply STAB
+    const hasSTAB = attacker.types.includes(result.move.type);
+    let stabMultiplier = 1.0;
+    let stabText = "";
+    if (attacker.hasAbility('Adaptability') && hasSTAB) {
+      stabMultiplier = 2.0;
+      stabText = "Adaptability STAB";
+    } else if (hasSTAB || attacker.hasAbility('Protean') || attacker.hasAbility('Libero')) {
+      stabMultiplier = 1.5;
+      stabText = "STAB";
     }
 
-    let power = attackStat * basePower * rollMultiplier;
-    if (hasSTAB) {
-      power *= 1.5;
+    // Start with base calculation using modified base power
+    const basePower = result.move.bp;
+    const descBasePower = result.rawDesc.moveBP;
+    let power = attackStat * (descBasePower ?? basePower) * rollMultiplier * stabMultiplier;
+    
+    // Apply all modifiers from the calculation
+    if (result.allModifiers && result.allModifiers.length > 0) {
+      result.allModifiers.forEach(modifier => {
+        power = power * modifier.mod / 4096;
+      });
     }
 
     return {
-      category: move.category,
+      category: result.move.category,
       move: move.name,
       attackStat: attackStat,
-      attackStatName: move.overrideOffensiveStat || (isPhysical ? 'atk' : 'spa'),
+      attackStatName: attackStatName,
       basePower: basePower,
-      hasSTAB: hasSTAB,
-      value: this.formatValue(power, basePower),
+      descBasePower: descBasePower,
+      stabMultiplier: stabMultiplier,
+      stabText: stabText,
+      allModifiers: result.allModifiers || [],
+      value: this.formatValue(power, basePower, move.name),
     };
   },
 
@@ -1695,9 +1635,9 @@ const subtool = {
 
 
   // Unified helper for formatting values with consistent decimal places
-  formatValue: function (value, basePower = null) {
+  formatValue: function (value, basePower = null, moveName = null) {
     // Handle variable power moves (basePower === 0)
-    if (basePower === 0) {
+    if (basePower === 0 && moveName !== "Fling") {
       return "?";
     }
 
