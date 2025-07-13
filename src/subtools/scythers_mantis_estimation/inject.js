@@ -17,7 +17,10 @@ class ModifierTracker {
   }
   
   finishTracking() {
-    const result = [...this.currentMods];
+    // Remove duplicates, which occur from multihit moves
+    const uniqueModsSet = new Set(this.currentMods.map(mod => JSON.stringify(mod)));
+    const result = Array.from(uniqueModsSet).map(modString => JSON.parse(modString));
+    
     this.lastCalculation = result;
     this.currentMods = [];
     return result;
@@ -335,63 +338,48 @@ const subtool = {
       `;
     }
 
-    // Get the proper stat name (handles Body Press, Foul Play, etc.)
-    const statNameMap = {
-      'atk': 'Atk',
-      'def': 'Def',
-      'spa': 'SpA',
-      'spd': 'SpD',
-      'spe': 'Spe'
-    };
-    const attackStatName = statNameMap[powerData.attackStatName] || 'Atk';
-    const rollMultiplier = this.getRollMultiplier();
     const suffix = this.isMinRoll() ? MIN_ROLL_SUFFIX : "";
     const minRollExplanation = this.isMinRoll()
       ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>`
       : "";
     
     // Create a calculation string with all modifiers
-    let calculationParts = [`${powerData.attackStat} ${attackStatName}`];
-    
-    // Add base power, with an asterisk if it differs from pre-mod base power
-    const basePowerText = powerData.descBasePower && powerData.descBasePower !== powerData.basePower
-      ? `${powerData.descBasePower}<sup>†</sup> BP` 
-      : `${powerData.basePower} BP`;
-    calculationParts.push(basePowerText);
-    
-    // Add STAB if applicable with the right multiplier and type
-    if (powerData.stabMultiplier !== 1.0) {
-      calculationParts.push(`${powerData.stabMultiplier} (${powerData.stabText})`);
-    }
-    
-    // Function to extract the most relevant part of a reason
-    const getReasonValue = (reasons) => {
-      if (!reasons || Object.keys(reasons).length === 0) return "";
+    const calculationString = powerData.components.map(component => {
+      if (component.id === 'attackStat') {
+        // Get the proper stat name
+        const statNameMap = {
+          'atk': 'Atk',
+          'def': 'Def',
+          'spa': 'SpA',
+          'spd': 'SpD',
+          'spe': 'Spe'
+        };
+        const attackStatName = statNameMap[component.statName];
+        return `${component.value} ${attackStatName}`;
+      } else if (component.id === 'basePower') {
+        // Add base power, with an asterisk if it differs from pre-mod base power
+        const basePowerText = component.descBasePower && component.descBasePower !== component.basePower
+          ? `${component.descBasePower}<sup>†</sup> BP`
+          : `${component.basePower} BP`;
+        return basePowerText;
+      } else if (component.id === 'multihit') {
+        return `${component.value} hits`;
+      } else if (component.id === 'stabMultiplier') {
+        return `${component.value} (${component.text})`;
+      } else if (component.id === 'modifier') {
+        let text = `${Math.round(component.value * 100) / 100}`;
+        if (!component.reasons || Object.keys(component.reasons).length === 0) return text;
 
-      reasons = {...reasons}; // Copy b/c we're mutating
-      
-      // Special case because isCritical shows up as {"isCritical": true}
-      if ("isCritical" in reasons) reasons["isCritical"] = "Crit";
-
-      // Special case for terrains
-      if ("terrain" in reasons) {
-        reasons["terrain"] = reasons["terrain"] + " Terrain";
+        text += " (" + Object.entries(component.reasons).map(([key, value]) => { 
+          if (key === "isCritical") return "Crit";
+          if (key === "terrain") return `${value} Terrain`;
+          return value;
+        }).join(" + ") + ")";
+        return text;
+      } else if (component.id === 'rollMultiplier') {
+        return `${component.text}`;
       }
-      
-      return " (" + Object.values(reasons).join("+") + ")";
-    };
-    
-    powerData.allModifiers?.forEach(mod => {
-      const multiplier = Math.round(mod.mod / 4096 * 100) / 100;
-      const reason = getReasonValue(mod.reasons);
-      calculationParts.push(`${multiplier}${reason}`);
-    });
-    
-    // Add roll multiplier and denominator
-    calculationParts.push(`${rollMultiplier} / 10000`);
-    
-    // Join with multiplication signs
-    const calculationString = calculationParts.join(" * ");
+    }).join(' * ');
     
     const powerValue = Math.round(powerData.value * 10) / 10;
     const percent = Math.round((powerValue / 10.0) * 100);
@@ -440,8 +428,6 @@ const subtool = {
   },
 
   initTeambuilder: function (room) {
-    this.log.debug("Initializing Mantis Estimation for teambuilder");
-
     // Proxy functions that update the UI
     const functionsToProxy = [
       "updateStatForm",
@@ -455,7 +441,6 @@ const subtool = {
       const proxy = new FunctionListenerProxy(
         room[funcName],
         (originalFn, ...args) => {
-          this.log.debug(`${funcName} called`);
           const result = originalFn(...args);
           this.updateDisplays(room);
           return result;
@@ -468,7 +453,6 @@ const subtool = {
     const updateTeamViewProxy = new FunctionListenerProxy(
       room.updateTeamView,
       (originalFn, ...args) => {
-        this.log.debug("updateTeamView called");
         const result = originalFn(...args);
         this.updateTeamDisplays(room);
         return result;
@@ -480,7 +464,6 @@ const subtool = {
     const updateSetViewProxy = new FunctionListenerProxy(
       room.updateSetView,
       (originalFn, ...args) => {
-        this.log.debug("updateSetView called");
         const result = originalFn(...args);
         this.updateDisplays(room);
         return result;
@@ -492,7 +475,6 @@ const subtool = {
     const updateScrollProxy = new FunctionListenerProxy(
       BattleSearch.prototype.updateScroll,
       (originalFn, ...args) => {
-        this.log.debug("BattleSearch.updateScroll called");
         const result = originalFn(...args);
         if (room.curChartType === "move") {
           this.updateMoveSearchDisplays(room);
@@ -658,8 +640,6 @@ const subtool = {
   },
 
   initBattle: function (room) {
-    this.log.debug("Initializing Mantis Estimation for battle");
-
     // Proxy updateMoveControls to add power displays to move buttons
     const updateMoveControlsProxy = new FunctionListenerProxy(
       room.updateMoveControls,
@@ -936,10 +916,6 @@ const subtool = {
 
       const powerData = this.calculateMovePower({ pokemonSet: set }, move, species, dex);
       if (!powerData) return;
-
-      // if (move.id == "fireblast") {
-      //   this.log.debug('powerData:', powerData);
-      // }
 
       this.addPowerDisplayToInput(input, powerData, index, isTeamList);
     });
@@ -1267,7 +1243,6 @@ const subtool = {
     }
 
     const gen = this.getGeneration();
-    // In the minified version, Generations is a property with a get method
     const calcGen = window.calc.Generations.get(gen);
     
     // Create attacker Pokemon
@@ -1294,6 +1269,9 @@ const subtool = {
       nature: 'Hardy',
       overrides: {
         types: ['???'], // Typeless to avoid type interactions
+        stats: {
+          spe: 0,
+        },
       }
     });
     
@@ -1356,10 +1334,13 @@ const subtool = {
     
     const field = new window.calc.Field(fieldOptions);
     
-    // Calculate damage
+    // Run a calc to extract modifiers and other info
     const result = window.calc.calculate(calcGen, attacker, defender, calcMove, field);
+
+    // Start gathering the components of the final power value
+    const components = [];
     
-    // Get the actual stat used by the move based on overrideOffensiveStat
+    // Get the attacking stat used by the move (Atk, SpA, or Def for Body Press)
     let attackStat, attackStatName;
     if (result.move.overrideOffensiveStat) {
       attackStat = result.attacker.stats[result.move.overrideOffensiveStat];
@@ -1371,9 +1352,44 @@ const subtool = {
       attackStat = result.attacker.stats.spa;
       attackStatName = 'spa';
     }
-    
-    const rollMultiplier = this.getRollMultiplier();
-    
+    components.push({
+      id: 'attackStat',
+      value: attackStat,
+      statName: attackStatName,
+    });
+
+    // Add base power
+    let basePower = result.move.bp;
+    let descBasePower = result.rawDesc.moveBP;
+    components.push({
+      id: 'basePower',
+      value: descBasePower ?? basePower,
+      descBasePower: descBasePower,
+      basePower: basePower,
+    });
+
+    // Add multihit if applicable
+    let multihit;
+    if (typeof move.multihit === 'number') {
+      multihit = move.multihit;
+    } else if (Array.isArray(move.multihit)) {
+      if (result.attacker.ability === "Skill Link" || result.attacker.item === "Loaded Dice") {
+        multihit = move.multihit[1];
+      } else {
+        // We can't handle unknown number of hits
+        // So jank it to be variable BP
+        basePower = 0;
+      }
+    }
+    // For moves like Triple Axel, we get both a multihit and descBasePower, so we don't want to double count
+    // This probably breaks Water Shuriken for Greninja-Ash in like Hackmons or something, but whatever
+    if (multihit && !descBasePower) { 
+      components.push({
+        id: 'multihit',
+        value: multihit,
+      });
+    }
+
     // Apply STAB
     const hasSTAB = attacker.types.includes(result.move.type);
     let stabMultiplier = 1.0;
@@ -1385,30 +1401,39 @@ const subtool = {
       stabMultiplier = 1.5;
       stabText = "STAB";
     }
-
-    // Start with base calculation using modified base power
-    const basePower = result.move.bp;
-    const descBasePower = result.rawDesc.moveBP;
-    let power = attackStat * (descBasePower ?? basePower) * rollMultiplier * stabMultiplier;
+    if (stabMultiplier !== 1.0) {
+      components.push({
+        id: 'stabMultiplier',
+        value: stabMultiplier,
+        text: stabText,
+      });
+    }
     
     // Apply all modifiers from the calculation
     if (result.allModifiers && result.allModifiers.length > 0) {
       result.allModifiers.forEach(modifier => {
-        power = power * modifier.mod / 4096;
+        components.push({
+          id: 'modifier',
+          value: modifier.mod / 4096,
+          type: modifier.type,
+          reasons: modifier.reasons,
+        });
       });
     }
 
+    // Finally, add the roll multiplier and denominator
+    components.push({
+      id: 'rollMultiplier',
+      value: this.getRollMultiplier(),
+      text: `${this.getRollMultiplier()} / 10000`,
+    });
+
+    const finalPower = components.reduce((acc, component) => acc * component.value, 1);
+
     return {
       category: result.move.category,
-      move: move.name,
-      attackStat: attackStat,
-      attackStatName: attackStatName,
-      basePower: basePower,
-      descBasePower: descBasePower,
-      stabMultiplier: stabMultiplier,
-      stabText: stabText,
-      allModifiers: result.allModifiers || [],
-      value: this.formatValue(power, basePower, move.name),
+      value: this.formatValue(finalPower, basePower, move.name),
+      components: components,
     };
   },
 
@@ -1558,8 +1583,6 @@ const subtool = {
     } else {
       return;
     }
-
-    this.log.debug(`Pokemon data for tooltip type: ${type}`, { clientPokemon, serverPokemon });
 
     // Get species data from clientPokemon if available, otherwise from serverPokemon
     const speciesName = clientPokemon?.speciesForme || serverPokemon?.speciesForme;
