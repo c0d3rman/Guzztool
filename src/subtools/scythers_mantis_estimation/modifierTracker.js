@@ -3,29 +3,33 @@ import * as calc from '@smogon/calc';
 
 class ModifierTracker {
   constructor() {
-    this.currentMods = [];
-    this.lastCalculation = null;
-    this.lastDefense = null;
+    this.startTracking(); // Technically not needed
   }
   
   startTracking() {
-    this.currentMods = [];
-    this.lastDefense = null;
+    this.currentAttackerMods = [];
+    this.currentDefenderMods = [];
   }
   
-  addModifier(modData) {
-    // Accept the format: { mod, type, reasons }
-    this.currentMods.push(modData);
+  addAttackerModifier(modData) {
+    this.currentAttackerMods.push(modData);
+  }
+  
+  addDefenderModifier(modData) {
+    this.currentDefenderMods.push(modData);
   }
   
   finishTracking() {
-    // Remove duplicates, which occur from multihit moves
-    const uniqueModsSet = new Set(this.currentMods.map(mod => JSON.stringify(mod)));
-    const result = Array.from(uniqueModsSet).map(modString => JSON.parse(modString));
+    const uniqueAttackerMods = new Set(this.currentAttackerMods.map(mod => JSON.stringify(mod)));
+    const uniqueDefenderMods = new Set(this.currentDefenderMods.map(mod => JSON.stringify(mod)));
     
-    this.lastCalculation = result;
-    this.currentMods = [];
-    return result;
+    const attackerResult = Array.from(uniqueAttackerMods).map(modString => JSON.parse(modString));
+    const defenderResult = Array.from(uniqueDefenderMods).map(modString => JSON.parse(modString));
+    
+    this.currentAttackerMods = [];
+    this.currentDefenderMods = [];
+
+    return { attacker: attackerResult, defender: defenderResult };
   }
 }
 
@@ -38,7 +42,9 @@ const calculateProxy = new FunctionListenerProxy(
   (originalFn, ...args) => {
     window.modifierTracker.startTracking();
     const result = originalFn(...args);
-    result.allModifiers = window.modifierTracker.finishTracking();
+    const modifiers = window.modifierTracker.finishTracking();
+    result.attackModifiers = modifiers.attacker;
+    result.defenseModifiers = modifiers.defender;
     return result;
   }
 );

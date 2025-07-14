@@ -226,6 +226,19 @@ const subtool = {
     }
   },
 
+  formatModifierComponent: function(component) {
+    let text = `${Math.round(component.value * 100) / 100}`;
+    if (!component.reasons || Object.keys(component.reasons).length === 0) return text;
+
+    text += " (" + Object.entries(component.reasons).map(([key, value]) => { 
+      if (key === "isCritical") return "Crit";
+      if (key === "terrain") return `${value} Terrain`;
+      if (key === "weather") return `${value} Weather`;
+      return value;
+    }).join(" + ") + ")";
+    return text;
+  },
+
   // Helper to create field options and set status based on abilities/items
   setupFieldAndStatus: function(pokemon, gen) {
     const fieldOptions = {};
@@ -287,9 +300,6 @@ const subtool = {
   },
 
   getBulkTooltipHTML: function (type, bulkData) {
-    const statName = type === "Physical" ? "Def" : "SpD";
-    const statValue = type === "Physical" ? bulkData.def : bulkData.spd;
-    
     const bulkValue = parseFloat(bulkData.value);
     const powerValue = 4.0;
     const percent = Math.round((powerValue / bulkValue) * 100);
@@ -298,6 +308,22 @@ const subtool = {
     const powerSuffix = this.options?.min_roll ? MIN_ROLL_SUFFIX : "";
     const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
     
+    // Create a calculation string with all modifiers
+    let calculationString = bulkData.components.map(component => {
+      if (component.id === 'hp') {
+        return `${component.value} HP`;
+      } else if (component.id === 'defenseStat') {
+        const statNameMap = {
+          'def': 'Def',
+          'spd': 'SpD'
+        };
+        const defenseStatName = statNameMap[component.statName];
+        return `${component.value} ${defenseStatName}`;
+      } else if (component.id === 'modifier') {
+        return this.formatModifierComponent(component);
+      }
+    }).join(' * ') + " / 10000";
+    
     let noteHtml = "";
     if (bulkData.note) {
       noteHtml = `<p class="mantis-tooltip-note">Assuming ${bulkData.note}</p>`;
@@ -305,7 +331,7 @@ const subtool = {
     
     return this.createTooltipHTML({
       title: `${type} Bulk`,
-      content: `(${bulkData.hp} HP * ${statValue} ${statName}) / 10000 ≈ ${bulkData.value}`,
+      content: `${calculationString} ≈ ${bulkData.value}`,
       example: exampleText,
       additionalHtml: noteHtml
     });
@@ -351,19 +377,11 @@ const subtool = {
       } else if (component.id === 'stabMultiplier') {
         return `${component.value} (${component.text})`;
       } else if (component.id === 'modifier') {
-        let text = `${Math.round(component.value * 100) / 100}`;
-        if (!component.reasons || Object.keys(component.reasons).length === 0) return text;
-
-        text += " (" + Object.entries(component.reasons).map(([key, value]) => { 
-          if (key === "isCritical") return "Crit";
-          if (key === "terrain") return `${value} Terrain`;
-          return value;
-        }).join(" + ") + ")";
-        return text;
+        return this.formatModifierComponent(component);
       } else if (component.id === 'rollMultiplier') {
         return `${component.text}`;
       }
-    }).join(' * ');
+    }).join(' * ') + " / 10000";
     
     const powerValue = Math.round(powerData.value * 10) / 10;
     const percent = Math.round((powerValue / 10.0) * 100);
@@ -1085,38 +1103,101 @@ const subtool = {
       // Use physical and special moves to trigger defense calculations
       const physicalMove = new calc.Move(calcGen, 'Struggle');
       const specialMove = new calc.Move(calcGen, 'Ice Beam');
-      calc.calculate(calcGen, attacker, defender, physicalMove, field);
-      let physicalDefense = window.modifierTracker.lastDefense;
-      calc.calculate(calcGen, attacker, defender, specialMove, field);
-      let specialDefense = window.modifierTracker.lastDefense;
-
-      // Special cases (which are handled in the attacker's calc so we can't use the tracker)
-      if (defender.hasAbility('Tablets of Ruin')) {
-        physicalDefense *= 1 / 0.75; // Attacker is 25% weaker
-      }
-      if (defender.hasAbility('Vessel of Ruin')) {
-        specialDefense *= 1 / 0.75; // Attacker is 25% weaker
-      }
-      if (defender.hasAbility('Ice Scales')) {
-        specialDefense *= 2;
-      }
+      const physicalResult = calc.calculate(calcGen, attacker, defender, physicalMove, field);
+      const specialResult = calc.calculate(calcGen, attacker, defender, specialMove, field);
       
-      // Use maxHP() method to get the HP value
+      // Get base defense values
+      const basePhysicalDefense = defender.stats.def;
+      const baseSpecialDefense = defender.stats.spd;
       const hp = defender.maxHP();
       
-      const physicalBulk = this.formatValue(hp * physicalDefense);
-      const specialBulk = this.formatValue(hp * specialDefense);
+      // Create components for physical bulk
+      const physicalComponents = [];
+      physicalComponents.push({
+        id: 'hp',
+        value: hp
+      });
+      physicalComponents.push({
+        id: 'defenseStat',
+        value: basePhysicalDefense,
+        statName: 'def'
+      });
+      
+      // Apply physical defense modifiers
+      if (physicalResult.defenseModifiers && physicalResult.defenseModifiers.length > 0) {
+        physicalResult.defenseModifiers.forEach(modifier => {
+          physicalComponents.push({
+            id: 'modifier',
+            value: modifier.mod / 4096,
+            type: modifier.type,
+            reasons: modifier.reasons,
+          });
+        });
+      }
+      
+      // Create components for special bulk
+      const specialComponents = [];
+      specialComponents.push({
+        id: 'hp',
+        value: hp
+      });
+      specialComponents.push({
+        id: 'defenseStat',
+        value: baseSpecialDefense,
+        statName: 'spd'
+      });
+      
+      // Apply special defense modifiers
+      if (specialResult.defenseModifiers && specialResult.defenseModifiers.length > 0) {
+        specialResult.defenseModifiers.forEach(modifier => {
+          specialComponents.push({
+            id: 'modifier',
+            value: modifier.mod / 4096,
+            type: modifier.type,
+            reasons: modifier.reasons,
+          });
+        });
+      }
+      
+      // Special cases
+      if (defender.hasAbility('Tablets of Ruin')) {
+        physicalComponents.push({
+          id: 'modifier',
+          value: 1 / 0.75, // Attacker has 75% of its attack
+          reasons: { defenderAbility: "Tablets of Ruin" }
+        });
+      }
+      if (defender.hasAbility('Vessel of Ruin')) {
+        specialComponents.push({
+          id: 'modifier',
+          value: 1 / 0.75, // Attacker has 75% of its attack
+          reasons: { defenderAbility: "Vessel of Ruin" }
+        });
+      }
+      if (defender.hasAbility('Ice Scales')) {
+        specialComponents.push({
+          id: 'modifier',
+          value: 2,
+          reasons: { defenderAbility: "Ice Scales" }
+        });
+      }
+      
+      // Calculate final values
+      const physicalBulk = physicalComponents.reduce((acc, comp) => acc * comp.value, 1);
+      const specialBulk = specialComponents.reduce((acc, comp) => acc * comp.value, 1);
       
       return {
         physical: {
-          value: physicalBulk,
+          value: this.formatValue(physicalBulk),
           hp: hp,
-          def: physicalDefense,
+          def: basePhysicalDefense,
+          components: physicalComponents
         },
         special: {
-          value: specialBulk,
+          value: this.formatValue(specialBulk),
           hp: hp,
-          spd: specialDefense,
+          spd: baseSpecialDefense,
+          components: specialComponents
         },
       };
     } catch (e) {
@@ -1301,8 +1382,8 @@ const subtool = {
     }
     
     // Apply all modifiers from the calculation
-    if (result.allModifiers && result.allModifiers.length > 0) {
-      result.allModifiers.forEach(modifier => {
+    if (result.attackModifiers && result.attackModifiers.length > 0) {
+      result.attackModifiers.forEach(modifier => {
         // Special case: some steps (e.g. Facade) both modify BP and set desc.moveBP
         // So instead of double-counting, we skip
         if (Object.keys(modifier.reasons).includes('moveBP')) {
@@ -1321,27 +1402,27 @@ const subtool = {
     if (attacker.hasAbility('Sword of Ruin')) {
       components.push({
         id: 'modifier',
-        value: 1 / 0.75, // Defender is 25% weaker
+        value: 1 / 0.75, // Defender has 75% of its defense
         reasons: {
-          swordOfRuin: "Sword of Ruin",
+          attackerAbility: "Sword of Ruin",
         },
       });
     }
     if (attacker.hasAbility('Beads of Ruin')) {
       components.push({
         id: 'modifier',
-        value: 1 / 0.75, // Defender is 25% weaker
+        value: 1 / 0.75, // Defender has 75% of its defense
         reasons: {
-          beadsOfRuin: "Beads of Ruin",
+          attackerAbility: "Beads of Ruin",
         },
       });
     }
 
-    // Finally, add the roll multiplier and denominator
+    // Finally, add the roll multiplier
     components.push({
       id: 'rollMultiplier',
       value: this.getRollMultiplier(),
-      text: `${this.getRollMultiplier()} / 10000`,
+      text: `${this.getRollMultiplier()}`,
     });
 
     const finalPower = components.reduce((acc, component) => acc * component.value, 1);

@@ -22,9 +22,10 @@ module.exports = function (source) {
   }
   
   // Helper function to generate logging code
-  function generateLoggingCode(modValue, modType, descAssignments) {
+  function generateLoggingCode(modValue, modType, descAssignments, isDefender = false) {
+      const methodName = isDefender ? 'addDefenderModifier' : 'addAttackerModifier';
       return `
-window.modifierTracker.addModifier({
+window.modifierTracker.${methodName}({
   mod: ${modValue},
   type: "${modType}",
   reasons: {${descAssignments.join(', ')}}
@@ -36,7 +37,7 @@ window.modifierTracker.addModifier({
   result = result.replace(ateAbilityPattern, (match, ifStart, pushStatement, modValue) => {
     modified = true;
       const loggingCode = `
-window.modifierTracker.addModifier({
+window.modifierTracker.addAttackerModifier({
   mod: ${modValue},
   type: "bp",
   reasons: {"attackerAbility": attacker.ability}
@@ -49,7 +50,7 @@ window.modifierTracker.addModifier({
   result = result.replace(weatherCancelPattern, (match, ifStart, content, returnStatement, closing) => {
     modified = true;
     const loggingCode = `
-window.modifierTracker.addModifier({
+window.modifierTracker.addAttackerModifier({
   mod: 0,
   type: "bp",
   reasons: {"weather": field.weather}
@@ -74,7 +75,7 @@ window.modifierTracker.addModifier({
     if (existingLog) return match; // Skip if already has logging
     modified = true;
     const descAssignments = extractDescAssignments(descBlock);
-    const loggingCode = generateLoggingCode(modValue, "final", descAssignments);
+    const loggingCode = generateLoggingCode(modValue, "final", descAssignments, false);
     return pushStatement + descBlock + loggingCode;
   });
 
@@ -84,7 +85,7 @@ window.modifierTracker.addModifier({
     if (existingLog) return match; // Skip if already has logging
     modified = true;
     const descAssignments = extractDescAssignments(descBlock);
-    const loggingCode = generateLoggingCode(modValue, "bd", descAssignments);
+    const loggingCode = generateLoggingCode(modValue, "bd", descAssignments, false);
     return calculation + descBlock + loggingCode;
   });
 
@@ -93,17 +94,18 @@ window.modifierTracker.addModifier({
   result = result.replace(mathFloorPattern, (match, calculation, modValue, descBlock) => {
     modified = true;
     const descAssignments = extractDescAssignments(descBlock);
-    const loggingCode = generateLoggingCode(modValue * 4096, "bd", descAssignments);
+    const loggingCode = generateLoggingCode(modValue * 4096, "bd", descAssignments, false);
     return calculation + descBlock + loggingCode;
   });
 
-  // Pattern to catch defense calculations
-  const defensePattern = /(var\s+defense\s*=\s*calculateDefense.*?;)/g;
-  result = result.replace(defensePattern, (match, statement) => {
+  // Pattern to match dfMods.push followed by desc assignments
+  const dfModPattern = /(dfMods\.push\((\d+|[a-zA-Z_$][a-zA-Z0-9_$]*)\);)((?:\s*desc\.\w+\s*=\s*[^;]+;)*)((?:\s*window\.damageCalcModLog\.push\()?)/g;
+  result = result.replace(dfModPattern, (match, pushStatement, modValue, descBlock, existingLog) => {
+    if (existingLog) return match; // Skip if already has logging
     modified = true;
-      const loggingCode = `
-window.modifierTracker.lastDefense = defense;`;
-    return statement + loggingCode;
+    const descAssignments = extractDescAssignments(descBlock);
+    const loggingCode = generateLoggingCode(modValue, "df", descAssignments, true);
+    return pushStatement + descBlock + loggingCode;
   });
 
   if (modified) {
