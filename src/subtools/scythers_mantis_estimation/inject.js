@@ -3,6 +3,13 @@ import { calc } from './modifierTracker';
 
 
 const MIN_ROLL_SUFFIX = "m";
+const statNameMap = {
+  'atk': 'Atk',
+  'def': 'Def',
+  'spa': 'SpA',
+  'spd': 'SpD',
+  'spe': 'Spe'
+};
 
 const subtool = {
   iconUrl: null,
@@ -71,110 +78,194 @@ const subtool = {
     return roomId.match(/battle-([^-]+)-\d+/)?.[1] || null;
   },
 
+  calculateBulkWithOptions: function(species, options = {}) {
+    const gen = this.getGeneration();
+    const calcGen = calc.Generations.get(gen);
+    
+    // Create defender Pokemon with specified options
+    const defender = this.createCalcPokemon(calcGen, species, options);
+    
+    // Set up field and status
+    const fieldOptions = this.setupFieldAndStatus(defender, gen);
+    const field = new calc.Field(fieldOptions);
+    
+    // Create a neutral attacker
+    const attacker = new calc.Pokemon(calcGen, 'Mew', {
+      level: 100,
+      nature: 'Hardy',
+    });
+    
+    // Use physical and special moves to trigger defense calculations
+    const physicalMove = new calc.Move(calcGen, 'Struggle');
+    const specialMove = new calc.Move(calcGen, 'Ice Beam');
+    const physicalResult = calc.calculate(calcGen, attacker, defender, physicalMove, field);
+    const specialResult = calc.calculate(calcGen, attacker, defender, specialMove, field);
+    
+    // Get base defense values
+    const basePhysicalDefense = defender.stats.def;
+    const baseSpecialDefense = defender.stats.spd;
+    const hp = defender.maxHP();
+    
+    // Create components for physical bulk
+    const physicalComponents = [];
+    physicalComponents.push({
+      id: 'hp',
+      value: hp
+    });
+    physicalComponents.push({
+      id: 'defenseStat',
+      value: basePhysicalDefense,
+      statName: 'def'
+    });
+    
+    // Apply stat stages for physical defense
+    if (physicalResult.rawDesc.defenseBoost) {
+      physicalComponents.push({
+        id: 'statStage',
+        stage: physicalResult.rawDesc.defenseBoost,
+        value: physicalResult.rawDesc.defenseBoost > 0 
+          ? (2 + physicalResult.rawDesc.defenseBoost) / 2
+          : 2 / (2 - physicalResult.rawDesc.defenseBoost),
+        stat: 'def',
+      });
+    }
+    
+    // Apply physical defense modifiers
+    if (physicalResult.defenseModifiers && physicalResult.defenseModifiers.length > 0) {
+      physicalResult.defenseModifiers.forEach(modifier => {
+        physicalComponents.push({
+          id: 'modifier',
+          value: modifier.mod / 4096,
+          type: modifier.type,
+          reasons: modifier.reasons,
+        });
+      });
+    }
+    
+    // Create components for special bulk
+    const specialComponents = [];
+    specialComponents.push({
+      id: 'hp',
+      value: hp
+    });
+    specialComponents.push({
+      id: 'defenseStat',
+      value: baseSpecialDefense,
+      statName: 'spd'
+    });
+    
+    // Apply stat stages for special defense
+    if (specialResult.rawDesc.defenseBoost) {
+      specialComponents.push({
+        id: 'statStage',
+        stage: specialResult.rawDesc.defenseBoost,
+        value: specialResult.rawDesc.defenseBoost > 0 
+          ? (2 + specialResult.rawDesc.defenseBoost) / 2
+          : 2 / (2 - specialResult.rawDesc.defenseBoost),
+        stat: 'spd',
+      });
+    }
+    
+    // Apply special defense modifiers
+    if (specialResult.defenseModifiers && specialResult.defenseModifiers.length > 0) {
+      specialResult.defenseModifiers.forEach(modifier => {
+        specialComponents.push({
+          id: 'modifier',
+          value: modifier.mod / 4096,
+          type: modifier.type,
+          reasons: modifier.reasons,
+        });
+      });
+    }
+    
+    // Special cases
+    if (defender.hasAbility('Tablets of Ruin')) {
+      physicalComponents.push({
+        id: 'modifier',
+        value: 1 / 0.75,
+        reasons: { defenderAbility: "Tablets of Ruin" }
+      });
+    }
+    if (defender.hasAbility('Vessel of Ruin')) {
+      specialComponents.push({
+        id: 'modifier',
+        value: 1 / 0.75,
+        reasons: { defenderAbility: "Vessel of Ruin" }
+      });
+    }
+    if (defender.hasAbility('Ice Scales')) {
+      specialComponents.push({
+        id: 'modifier',
+        value: 2,
+        reasons: { defenderAbility: "Ice Scales" }
+      });
+    }
+    
+    // Calculate final values
+    const physicalBulk = physicalComponents.reduce((acc, comp) => acc * comp.value, 1);
+    const specialBulk = specialComponents.reduce((acc, comp) => acc * comp.value, 1);
+    
+    return {
+      physical: {
+        value: this.formatValue(physicalBulk),
+        hp: hp,
+        def: basePhysicalDefense,
+        components: physicalComponents
+      },
+      special: {
+        value: this.formatValue(specialBulk),
+        hp: hp,
+        spd: baseSpecialDefense,
+        components: specialComponents
+      },
+    };
+  },
+
   calculateBulkRange: function (species, _dex, formatId, level = null) {
     if (!formatId) return null;
 
     // Determine level to use
     const pokemonLevel = level || 100;
 
-    // Use damage calc if available
-    if (calc) {
-      try {
-        const gen = this.getGeneration();
-        // In the minified version, Generations is a property with a get method
-        const calcGen = calc.Generations.get(gen);
-        
-        // Calculate minimum bulk (0 EVs, neutral nature)
-        const minPokemon = this.createCalcPokemon(calcGen, species, {
-          level: pokemonLevel,
-          evs: { hp: 0, def: 0, spd: 0 },
-          nature: 'Hardy',
-        });
-        
-        // Calculate maximum physical bulk (252 HP, 252+ Def)
-        const maxDefPokemon = this.createCalcPokemon(calcGen, species, {
-          level: pokemonLevel,
-          evs: { hp: 252, def: 252 },
-          nature: 'Bold', // +Def nature
-        });
-        
-        // Calculate maximum special bulk (252 HP, 252+ SpD)
-        const maxSpDPokemon = this.createCalcPokemon(calcGen, species, {
-          level: pokemonLevel,
-          evs: { hp: 252, spd: 252 },
-          nature: 'Calm', // +SpD nature
-        });
-        
-        return {
-          physical: {
-            min: this.formatValue(minPokemon.stats.hp * minPokemon.stats.def),
-            max: this.formatValue(maxDefPokemon.stats.hp * maxDefPokemon.stats.def),
-            minHp: minPokemon.stats.hp,
-            minDef: minPokemon.stats.def,
-            maxHp: maxDefPokemon.stats.hp,
-            maxDef: maxDefPokemon.stats.def
-          },
-          special: {
-            min: this.formatValue(minPokemon.stats.hp * minPokemon.stats.spd),
-            max: this.formatValue(maxSpDPokemon.stats.hp * maxSpDPokemon.stats.spd),
-            minHp: minPokemon.stats.hp,
-            minSpd: minPokemon.stats.spd,
-            maxHp: maxSpDPokemon.stats.hp,
-            maxSpd: maxSpDPokemon.stats.spd
-          },
-          level: pokemonLevel
-        };
-      } catch (e) {
-        this.log.debug('Damage calc failed for bulk range, using fallback:', e);
-        return this.calculateBulkRangeFallback(species, _dex, formatId, pokemonLevel);
-      }
-    }
+    // Calculate minimum bulk (0 EVs, neutral nature)
+    const minBulk = this.calculateBulkWithOptions(species, {
+      level: pokemonLevel,
+      evs: { hp: 0, def: 0, spd: 0 },
+      nature: 'Hardy',
+    });
     
-    return this.calculateBulkRangeFallback(species, _dex, formatId, pokemonLevel);
-  },
-  
-  calculateBulkRangeFallback: function (species, _dex, formatId, level = 100) {
-    // BattleStatGuesser uses the format's default level
-    const statGuesser = new BattleStatGuesser(formatId);
+    // Calculate maximum physical bulk (252 HP, 252+ Def)
+    const maxPhysBulk = this.calculateBulkWithOptions(species, {
+      level: pokemonLevel,
+      evs: { hp: 252, def: 252 },
+      nature: 'Bold', // +Def nature
+    });
     
-    // Note: BattleStatGuesser doesn't support custom levels in its getStat method,
-    // so we're limited to the format's default level for the fallback
-    
-    // Calculate minimum bulk (0 EVs, 31 IVs, neutral nature)
-    const minSet = { species: species.id, moves: [] };
-    const minHp = statGuesser.getStat("hp", minSet, 0, 0);
-    const minDef = statGuesser.getStat("def", minSet, 0, 0);
-    const minSpd = statGuesser.getStat("spd", minSet, 0, 0);
-    
-    // Calculate maximum bulk (252 EVs in HP and defensive stat, 31 IVs, defensive boosting nature)
-    const maxSet = { species: species.id, moves: [] };
-    const maxHp = statGuesser.getStat("hp", maxSet, 252, 0);
-    const maxDef = statGuesser.getStat("def", maxSet, 252, 1.1); // +Def nature
-    const maxSpd = statGuesser.getStat("spd", maxSet, 252, 1.1); // +SpD nature
-    
-    const physicalMin = this.formatValue(minHp * minDef);
-    const physicalMax = this.formatValue(maxHp * maxDef);
-    const specialMin = this.formatValue(minHp * minSpd);
-    const specialMax = this.formatValue(maxHp * maxSpd);
+    // Calculate maximum special bulk (252 HP, 252+ SpD)
+    const maxSpecBulk = this.calculateBulkWithOptions(species, {
+      level: pokemonLevel,
+      evs: { hp: 252, spd: 252 },
+      nature: 'Calm', // +SpD nature
+    });
     
     return {
       physical: {
-        min: physicalMin,
-        max: physicalMax,
-        minHp: minHp,
-        minDef: minDef,
-        maxHp: maxHp,
-        maxDef: maxDef
+        min: minBulk.physical.value,
+        max: maxPhysBulk.physical.value,
+        minHp: minBulk.physical.hp,
+        minDef: minBulk.physical.def,
+        maxHp: maxPhysBulk.physical.hp,
+        maxDef: maxPhysBulk.physical.def
       },
       special: {
-        min: specialMin,
-        max: specialMax,
-        minHp: minHp,
-        minSpd: minSpd,
-        maxHp: maxHp,
-        maxSpd: maxSpd
+        min: minBulk.special.value,
+        max: maxSpecBulk.special.value,
+        minHp: minBulk.special.hp,
+        minSpd: minBulk.special.spd,
+        maxHp: maxSpecBulk.special.hp,
+        maxSpd: maxSpecBulk.special.spd
       },
-      level: level
+      level: pokemonLevel
     };
   },
 
@@ -226,17 +317,37 @@ const subtool = {
     }
   },
 
-  formatModifierComponent: function(component) {
-    let text = `${Math.round(component.value * 100) / 100}`;
-    if (!component.reasons || Object.keys(component.reasons).length === 0) return text;
+  formatComponent: function(component) {
+    if (component.id === 'hp') {
+      return `${component.value} HP`;
+    } else if (component.id === 'attackStat' || component.id === 'defenseStat') {
+      const statName = statNameMap[component.statName];
+      return `${component.value} ${statName}`;
+    } else if (component.id === 'basePower') {
+      const basePowerText = component.descBasePower && component.descBasePower !== component.basePower
+        ? `${component.descBasePower}<sup>†</sup> BP`
+        : `${component.basePower} BP`;
+      return basePowerText;
+    } else if (component.id === 'multihit') {
+      return `${component.value} hits`;
+    } else if (component.id === 'stabMultiplier') {
+      return `${component.value} (${component.text})`;
+    } else if (component.id === 'statStage') {
+      return `${component.value} (${component.stage > 0 ? '+' : ''}${component.stage} ${statNameMap[component.stat]})`;
+    } else if (component.id === 'modifier') {
+      let text = `${Math.round(component.value * 100) / 100}`;
+      if (!component.reasons || Object.keys(component.reasons).length === 0) return text;
 
-    text += " (" + Object.entries(component.reasons).map(([key, value]) => { 
-      if (key === "isCritical") return "Crit";
-      if (key === "terrain") return `${value} Terrain`;
-      if (key === "weather") return `${value} Weather`;
-      return value;
-    }).join(" + ") + ")";
-    return text;
+      text += " (" + Object.entries(component.reasons).map(([key, value]) => { 
+        if (key === "isCritical") return "Crit";
+        if (key === "terrain") return `${value} Terrain`;
+        if (key === "weather") return `${value} Weather`;
+        return value;
+      }).join(" + ") + ")";
+      return text;
+    } else if (component.id === 'rollMultiplier') {
+      return component.text;
+    }
   },
 
   // Helper to create field options and set status based on abilities/items
@@ -309,20 +420,7 @@ const subtool = {
     const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
     
     // Create a calculation string with all modifiers
-    let calculationString = bulkData.components.map(component => {
-      if (component.id === 'hp') {
-        return `${component.value} HP`;
-      } else if (component.id === 'defenseStat') {
-        const statNameMap = {
-          'def': 'Def',
-          'spd': 'SpD'
-        };
-        const defenseStatName = statNameMap[component.statName];
-        return `${component.value} ${defenseStatName}`;
-      } else if (component.id === 'modifier') {
-        return this.formatModifierComponent(component);
-      }
-    }).join(' * ') + " / 10000";
+    const calculationString = bulkData.components.map(component => this.formatComponent(component)).join(' * ') + " / 10000";
     
     let noteHtml = "";
     if (bulkData.note) {
@@ -354,34 +452,7 @@ const subtool = {
       : "";
     
     // Create a calculation string with all modifiers
-    const calculationString = powerData.components.map(component => {
-      if (component.id === 'attackStat') {
-        // Get the proper stat name
-        const statNameMap = {
-          'atk': 'Atk',
-          'def': 'Def',
-          'spa': 'SpA',
-          'spd': 'SpD',
-          'spe': 'Spe'
-        };
-        const attackStatName = statNameMap[component.statName];
-        return `${component.value} ${attackStatName}`;
-      } else if (component.id === 'basePower') {
-        // Add base power, with an asterisk if it differs from pre-mod base power
-        const basePowerText = component.descBasePower && component.descBasePower !== component.basePower
-          ? `${component.descBasePower}<sup>†</sup> BP`
-          : `${component.basePower} BP`;
-        return basePowerText;
-      } else if (component.id === 'multihit') {
-        return `${component.value} hits`;
-      } else if (component.id === 'stabMultiplier') {
-        return `${component.value} (${component.text})`;
-      } else if (component.id === 'modifier') {
-        return this.formatModifierComponent(component);
-      } else if (component.id === 'rollMultiplier') {
-        return `${component.text}`;
-      }
-    }).join(' * ') + " / 10000";
+    const calculationString = powerData.components.map(component => this.formatComponent(component)).join(' * ') + " / 10000";
     
     const powerValue = Math.round(powerData.value * 10) / 10;
     const percent = Math.round((powerValue / 10.0) * 100);
@@ -645,7 +716,6 @@ const subtool = {
     const updateMoveControlsProxy = new FunctionListenerProxy(
       room.updateMoveControls,
       (originalFn, ...args) => {
-        this.log.debug("updateMoveControls called");
         const result = originalFn(...args);
         this.updateBattleMoveDisplays(room);
         return result;
@@ -1068,184 +1138,23 @@ const subtool = {
   },
 
   calculateBulkValues: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
-    try {
-      const gen = this.getGeneration();
-      const calcGen = calc.Generations.get(gen);
-      
-      // Create defender Pokemon
-      const set = pokemonSet || {};
-      const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
-      if (!stats) throw new Error('No stats found');
-      
-      const defenderOptions = {
-        level: set.level || serverPokemon?.level || clientPokemon?.level || 100,
-        evs: set.evs || {},
-        ivs: set.ivs || {},
-        nature: set.nature || 'Hardy',
-        ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || '',
-        item: set.item || serverPokemon?.item || clientPokemon?.item || '',
-        boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
-        curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
-      };
-      
-      const defender = this.createCalcPokemon(calcGen, species, defenderOptions);
-      
-      // Set up field and status
-      const fieldOptions = this.setupFieldAndStatus(defender, gen);
-      const field = new calc.Field(fieldOptions);
-      
-      // Create a neutral attacker
-      const attacker = new calc.Pokemon(calcGen, 'Mew', {
-        level: 100,
-        nature: 'Hardy',
-      });
-      
-      // Use physical and special moves to trigger defense calculations
-      const physicalMove = new calc.Move(calcGen, 'Struggle');
-      const specialMove = new calc.Move(calcGen, 'Ice Beam');
-      const physicalResult = calc.calculate(calcGen, attacker, defender, physicalMove, field);
-      const specialResult = calc.calculate(calcGen, attacker, defender, specialMove, field);
-      
-      // Get base defense values
-      const basePhysicalDefense = defender.stats.def;
-      const baseSpecialDefense = defender.stats.spd;
-      const hp = defender.maxHP();
-      
-      // Create components for physical bulk
-      const physicalComponents = [];
-      physicalComponents.push({
-        id: 'hp',
-        value: hp
-      });
-      physicalComponents.push({
-        id: 'defenseStat',
-        value: basePhysicalDefense,
-        statName: 'def'
-      });
-      
-      // Apply physical defense modifiers
-      if (physicalResult.defenseModifiers && physicalResult.defenseModifiers.length > 0) {
-        physicalResult.defenseModifiers.forEach(modifier => {
-          physicalComponents.push({
-            id: 'modifier',
-            value: modifier.mod / 4096,
-            type: modifier.type,
-            reasons: modifier.reasons,
-          });
-        });
-      }
-      
-      // Create components for special bulk
-      const specialComponents = [];
-      specialComponents.push({
-        id: 'hp',
-        value: hp
-      });
-      specialComponents.push({
-        id: 'defenseStat',
-        value: baseSpecialDefense,
-        statName: 'spd'
-      });
-      
-      // Apply special defense modifiers
-      if (specialResult.defenseModifiers && specialResult.defenseModifiers.length > 0) {
-        specialResult.defenseModifiers.forEach(modifier => {
-          specialComponents.push({
-            id: 'modifier',
-            value: modifier.mod / 4096,
-            type: modifier.type,
-            reasons: modifier.reasons,
-          });
-        });
-      }
-      
-      // Special cases
-      if (defender.hasAbility('Tablets of Ruin')) {
-        physicalComponents.push({
-          id: 'modifier',
-          value: 1 / 0.75, // Attacker has 75% of its attack
-          reasons: { defenderAbility: "Tablets of Ruin" }
-        });
-      }
-      if (defender.hasAbility('Vessel of Ruin')) {
-        specialComponents.push({
-          id: 'modifier',
-          value: 1 / 0.75, // Attacker has 75% of its attack
-          reasons: { defenderAbility: "Vessel of Ruin" }
-        });
-      }
-      if (defender.hasAbility('Ice Scales')) {
-        specialComponents.push({
-          id: 'modifier',
-          value: 2,
-          reasons: { defenderAbility: "Ice Scales" }
-        });
-      }
-      
-      // Calculate final values
-      const physicalBulk = physicalComponents.reduce((acc, comp) => acc * comp.value, 1);
-      const specialBulk = specialComponents.reduce((acc, comp) => acc * comp.value, 1);
-      
-      return {
-        physical: {
-          value: this.formatValue(physicalBulk),
-          hp: hp,
-          def: basePhysicalDefense,
-          components: physicalComponents
-        },
-        special: {
-          value: this.formatValue(specialBulk),
-          hp: hp,
-          spd: baseSpecialDefense,
-          components: specialComponents
-        },
-      };
-    } catch (e) {
-      this.log.debug('Damage calc failed for bulk, using fallback:', e);
-      return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
-    }
-  },
-  
-  calculateBulkValuesFallback: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
+    // Create defender Pokemon options
+    const set = pokemonSet || {};
     const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
     if (!stats) return null;
     
-    const hp = stats.hp;
-    const def = stats.def;
-    const spd = stats.spd;
-
-    // Apply item effects only if not using modified stats
-    let finalDef = def;
-    let finalSpd = spd;
-    
-    const item = serverPokemon?.item || clientPokemon?.item || pokemonSet?.item;
-    if (item) {
-      const itemData = dex.items.get(item);
-      if (itemData) {
-        if (itemData.id === "assaultvest") {
-          finalSpd = Math.floor(spd * 1.5);
-        } else if (itemData.id === "eviolite" && species.nfe) {
-          finalDef = Math.floor(def * 1.5);
-          finalSpd = Math.floor(spd * 1.5);
-        }
-      }
-    }
-
-    const physicalBulk = this.formatValue(hp * finalDef);
-    const specialBulk = this.formatValue(hp * finalSpd);
-
-    return {
-      physical: {
-        value: physicalBulk,
-        hp: hp,
-        def: finalDef,
-      },
-      special: {
-        value: specialBulk,
-        hp: hp,
-        spd: finalSpd,
-      },
+    const defenderOptions = {
+      level: set.level || serverPokemon?.level || clientPokemon?.level || 100,
+      evs: set.evs || {},
+      ivs: set.ivs || {},
+      nature: set.nature || 'Hardy',
+      ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || '',
+      item: set.item || serverPokemon?.item || clientPokemon?.item || '',
+      boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
+      curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
     };
+    
+    return this.calculateBulkWithOptions(species, defenderOptions);
   },
 
   calculatePowerValues: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex) {
@@ -1304,13 +1213,13 @@ const subtool = {
     // Get the attacking stat used by the move (Atk, SpA, or Def for Body Press)
     let attackStat, attackStatName;
     if (result.move.overrideOffensiveStat) {
-      attackStat = result.attacker.stats[result.move.overrideOffensiveStat];
+      attackStat = attacker.stats[result.move.overrideOffensiveStat];
       attackStatName = result.move.overrideOffensiveStat;
     } else if (result.move.category === "Physical") {
-      attackStat = result.attacker.stats.atk;
+      attackStat = attacker.stats.atk;
       attackStatName = 'atk';
     } else {
-      attackStat = result.attacker.stats.spa;
+      attackStat = attacker.stats.spa;
       attackStatName = 'spa';
     }
     components.push({
@@ -1334,7 +1243,7 @@ const subtool = {
     if (typeof move.multihit === 'number') {
       multihit = move.multihit;
     } else if (Array.isArray(move.multihit)) {
-      if (result.attacker.ability === "Skill Link" || result.attacker.item === "Loaded Dice") {
+      if (attacker.ability === "Skill Link" || attacker.item === "Loaded Dice") {
         multihit = move.multihit[1];
       } else {
         // We can't handle unknown number of hits
@@ -1367,6 +1276,18 @@ const subtool = {
         id: 'stabMultiplier',
         value: stabMultiplier,
         text: stabText,
+      });
+    }
+
+    // Apply stat stages
+    if (result.rawDesc.attackBoost) {
+      components.push({
+        id: 'statStage',
+        stage: result.rawDesc.attackBoost,
+        value: result.rawDesc.attackBoost > 0 
+          ? (2 + result.rawDesc.attackBoost) / 2
+          : 2 / (2 - result.rawDesc.attackBoost),
+        stat: attackStatName,
       });
     }
 
