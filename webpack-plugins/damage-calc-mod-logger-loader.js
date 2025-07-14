@@ -24,7 +24,7 @@ module.exports = function (source) {
   // Helper function to generate logging code
   function generateLoggingCode(modValue, modType, descAssignments) {
       return `
-window.damageCalcModLog.push({
+window.modifierTracker.addModifier({
   mod: ${modValue},
   type: "${modType}",
   reasons: {${descAssignments.join(', ')}}
@@ -36,7 +36,7 @@ window.damageCalcModLog.push({
   result = result.replace(ateAbilityPattern, (match, ifStart, pushStatement, modValue) => {
     modified = true;
       const loggingCode = `
-window.damageCalcModLog.push({
+window.modifierTracker.addModifier({
   mod: ${modValue},
   type: "bp",
   reasons: {"attackerAbility": attacker.ability}
@@ -49,7 +49,7 @@ window.damageCalcModLog.push({
   result = result.replace(weatherCancelPattern, (match, ifStart, content, returnStatement, closing) => {
     modified = true;
     const loggingCode = `
-window.damageCalcModLog.push({
+window.modifierTracker.addModifier({
   mod: 0,
   type: "bp",
   reasons: {"weather": field.weather}
@@ -95,6 +95,15 @@ window.damageCalcModLog.push({
     const descAssignments = extractDescAssignments(descBlock);
     const loggingCode = generateLoggingCode(modValue * 4096, "bd", descAssignments);
     return calculation + descBlock + loggingCode;
+  });
+
+  // Pattern to catch defense calculations
+  const defensePattern = /(var\s+defense\s*=\s*calculateDefense.*?;)/g;
+  result = result.replace(defensePattern, (match, statement) => {
+    modified = true;
+      const loggingCode = `
+window.modifierTracker.lastDefense = defense;`;
+    return statement + loggingCode;
   });
 
   if (modified) {

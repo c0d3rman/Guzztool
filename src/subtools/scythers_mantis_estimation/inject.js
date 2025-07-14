@@ -226,6 +226,66 @@ const subtool = {
     }
   },
 
+  // Helper to create field options and set status based on abilities/items
+  setupFieldAndStatus: function(pokemon, gen) {
+    const fieldOptions = {};
+    
+    // Check for weather-setting or terrain-setting abilities
+    switch (pokemon.ability) {
+      // Weather
+      case 'Drizzle':
+        fieldOptions.weather = 'Rain';
+        break;
+      case 'Drought':
+        fieldOptions.weather = 'Sun';
+        break;
+      case 'Sand Stream':
+        fieldOptions.weather = 'Sand';
+        break;
+      case 'Snow Warning':
+        fieldOptions.weather = gen >= 9 ? 'Snow' : 'Hail';
+        break;
+      case 'Primordial Sea':
+        fieldOptions.weather = 'Heavy Rain';
+        break;
+      case 'Desolate Land':
+        fieldOptions.weather = 'Harsh Sunshine';
+        break;
+      case 'Orichalcum Pulse':
+        fieldOptions.weather = 'Sun';
+        break;
+      
+      // Terrain
+      case 'Electric Surge':
+        fieldOptions.terrain = 'Electric';
+        break;
+      case 'Grassy Surge':
+        fieldOptions.terrain = 'Grassy';
+        break;
+      case 'Misty Surge':
+        fieldOptions.terrain = 'Misty';
+        break;
+      case 'Psychic Surge':
+        fieldOptions.terrain = 'Psychic';
+        break;
+      case 'Hadron Engine':
+        fieldOptions.terrain = 'Electric';
+        break;
+    }
+
+    // Set status based on item
+    switch (pokemon.item) {
+      case "Flame Orb":
+        pokemon.status = "brn";
+        break;
+      case "Toxic Orb":
+        pokemon.status = "tox";
+        break;
+    }
+    
+    return fieldOptions;
+  },
+
   getBulkTooltipHTML: function (type, bulkData) {
     const statName = type === "Physical" ? "Def" : "SpD";
     const statValue = type === "Physical" ? bulkData.def : bulkData.spd;
@@ -437,13 +497,13 @@ const subtool = {
               if (move1.category === "Status") return sortOrder;
               if (move2.category === "Status") return -sortOrder;
 
-              const powerData1 = this.calculateMovePower(
+              const powerData1 = this.calculatePowerValues(
                 room.curSet,
                 move1,
                 species,
                 room.curTeam.dex
               );
-              const powerData2 = this.calculateMovePower(
+              const powerData2 = this.calculatePowerValues(
                 room.curSet,
                 move2,
                 species,
@@ -668,7 +728,7 @@ const subtool = {
       const move = room.curTeam.dex.moves.get(moveName);
 
       if (move && move.category !== "Status") {
-        const powerData = this.calculateMovePower(
+        const powerData = this.calculatePowerValues(
           { pokemonSet: room.curSet },
           move,
           species,
@@ -833,7 +893,7 @@ const subtool = {
       const move = dex.moves.get(moveName);
       if (!move) return;
 
-      const powerData = this.calculateMovePower({ pokemonSet: set }, move, species, dex);
+      const powerData = this.calculatePowerValues({ pokemonSet: set }, move, species, dex);
       if (!powerData) return;
 
       this.addPowerDisplayToInput(input, powerData, index, isTeamList);
@@ -990,123 +1050,79 @@ const subtool = {
   },
 
   calculateBulkValues: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
-    // Use damage calc if available
-    if (calc) {
-      try {
-        const calcGen = calc.Generations.get(this.getGeneration());
-        
-        // Create Pokemon object for calculation
-        const set = pokemonSet || {};
-        const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
-        if (!stats) return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
-        
-        const pokemonOptions = {
-          level: set.level || serverPokemon?.level || clientPokemon?.level || 100,
-          evs: set.evs || {},
-          ivs: set.ivs || {},
-          nature: set.nature || 'Hardy',
-          ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || species.abilities?.[0] || '',
-          item: set.item || serverPokemon?.item || clientPokemon?.item || '',
-          boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
-          curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
-        };
-        
-        // For bulk calculation, we need to simulate incoming damage
-        // Create a neutral attacker to test defense
-        const neutralAttacker = new calc.Pokemon(calcGen, 'Mew', {
-          level: 100,
-          nature: 'Hardy',
-        });
-        
-        const defender = this.createCalcPokemon(calcGen, species, pokemonOptions);
-        
-        // Calculate with physical and special moves to get defense modifiers
-        const physicalMove = new calc.Move(calcGen, 'Tackle');
-        const specialMove = new calc.Move(calcGen, 'Water Gun');
-        
-        // Set up field conditions based on current battle state
-        const fieldOptions = {};
-        
-        // Check for weather
-        if (room.battle?.weather) {
-          const weatherMap = {
-            'sunnyday': 'Sun',
-            'raindance': 'Rain',
-            'sandstorm': 'Sand',
-            'hail': 'Hail',
-            'snow': 'Snow',
-            'harshsunshine': 'Harsh Sunshine',
-            'heavyrain': 'Heavy Rain',
-            'strongwinds': 'Strong Winds'
-          };
-          fieldOptions.weather = weatherMap[room.battle.weather] || undefined;
-        }
-        
-        // Check for terrain
-        if (room.battle?.terrain) {
-          const terrainMap = {
-            'electricterrain': 'Electric',
-            'grassyterrain': 'Grassy',
-            'mistyterrain': 'Misty',
-            'psychicterrain': 'Psychic'
-          };
-          fieldOptions.terrain = terrainMap[room.battle.terrain] || undefined;
-        }
-        
-        // Check for screens and other field effects
-        if (serverPokemon?.side || clientPokemon?.side) {
-          const side = serverPokemon?.side || clientPokemon?.side;
-          fieldOptions.defenderSide = {
-            isReflect: side.sideConditions?.reflect,
-            isLightScreen: side.sideConditions?.lightscreen,
-            isAuroraVeil: side.sideConditions?.auroraveil,
-            isSR: side.sideConditions?.stealthrock,
-            spikes: side.sideConditions?.spikes || 0,
-          };
-        }
-        
-        const field = new calc.Field(fieldOptions);
-        
-        // Run calculations to get defense stats with all modifiers
-        // We run these calculations to ensure all modifiers are applied to the defender's stats
-        calc.calculate(calcGen, neutralAttacker, defender, physicalMove, field);
-        calc.calculate(calcGen, neutralAttacker, defender, specialMove, field);
-        
-        // Extract the modified defense values from the calculations
-        // The calc applies all modifiers internally
-        const hp = defender.stats.hp;
-        const def = defender.stats.def;
-        const spd = defender.stats.spd;
-        
-        const physicalBulk = this.formatValue(hp * def);
-        const specialBulk = this.formatValue(hp * spd);
-        
-        return {
-          physical: {
-            value: physicalBulk,
-            hp: hp,
-            def: def,
-          },
-          special: {
-            value: specialBulk,
-            hp: hp,
-            spd: spd,
-          },
-        };
-      } catch (e) {
-        this.log.debug('Damage calc failed for bulk, using fallback:', e);
-        this.log.debug('pokemonSet:', pokemonSet);
-        this.log.debug('serverPokemon:', serverPokemon);
-        this.log.debug('clientPokemon:', clientPokemon);
-        this.log.debug('species:', species);
-        this.log.debug('dex:', dex);
-        this.log.debug('calc object:', calc);
-        this.log.debug('calc.Generations:', calc?.Generations);
-        return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
+    try {
+      const gen = this.getGeneration();
+      const calcGen = calc.Generations.get(gen);
+      
+      // Create defender Pokemon
+      const set = pokemonSet || {};
+      const stats = this.getStats({ pokemonSet, serverPokemon, clientPokemon });
+      if (!stats) throw new Error('No stats found');
+      
+      const defenderOptions = {
+        level: set.level || serverPokemon?.level || clientPokemon?.level || 100,
+        evs: set.evs || {},
+        ivs: set.ivs || {},
+        nature: set.nature || 'Hardy',
+        ability: set.ability || serverPokemon?.ability || clientPokemon?.ability || '',
+        item: set.item || serverPokemon?.item || clientPokemon?.item || '',
+        boosts: serverPokemon?.boosts || clientPokemon?.boosts || {},
+        curHP: serverPokemon?.hp || clientPokemon?.hp || stats.hp,
+      };
+      
+      const defender = this.createCalcPokemon(calcGen, species, defenderOptions);
+      
+      // Set up field and status
+      const fieldOptions = this.setupFieldAndStatus(defender, gen);
+      const field = new calc.Field(fieldOptions);
+      
+      // Create a neutral attacker
+      const attacker = new calc.Pokemon(calcGen, 'Mew', {
+        level: 100,
+        nature: 'Hardy',
+      });
+      
+      // Use physical and special moves to trigger defense calculations
+      const physicalMove = new calc.Move(calcGen, 'Struggle');
+      const specialMove = new calc.Move(calcGen, 'Ice Beam');
+      calc.calculate(calcGen, attacker, defender, physicalMove, field);
+      let physicalDefense = window.modifierTracker.lastDefense;
+      calc.calculate(calcGen, attacker, defender, specialMove, field);
+      let specialDefense = window.modifierTracker.lastDefense;
+
+      // Special cases (which are handled in the attacker's calc so we can't use the tracker)
+      if (defender.hasAbility('Tablets of Ruin')) {
+        physicalDefense *= 1 / 0.75; // Attacker is 25% weaker
       }
+      if (defender.hasAbility('Vessel of Ruin')) {
+        specialDefense *= 1 / 0.75; // Attacker is 25% weaker
+      }
+      if (defender.hasAbility('Ice Scales')) {
+        specialDefense *= 2;
+      }
+      
+      // Use maxHP() method to get the HP value
+      const hp = defender.maxHP();
+      
+      const physicalBulk = this.formatValue(hp * physicalDefense);
+      const specialBulk = this.formatValue(hp * specialDefense);
+      
+      return {
+        physical: {
+          value: physicalBulk,
+          hp: hp,
+          def: physicalDefense,
+        },
+        special: {
+          value: specialBulk,
+          hp: hp,
+          spd: specialDefense,
+        },
+      };
+    } catch (e) {
+      this.log.debug('Damage calc failed for bulk, using fallback:', e);
+      return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
     }
-    
-    return this.calculateBulkValuesFallback({ pokemonSet, serverPokemon, clientPokemon }, species, dex);
   },
   
   calculateBulkValuesFallback: function ({ pokemonSet, serverPokemon, clientPokemon }, species, dex) {
@@ -1151,7 +1167,7 @@ const subtool = {
     };
   },
 
-  calculateMovePower: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex) {
+  calculatePowerValues: function ({ pokemonSet, serverPokemon, clientPokemon }, move, species, dex) {
     if (move.category === "Status" || move.id == "recharge") {
       return null;
     }
@@ -1193,70 +1209,8 @@ const subtool = {
     // Create move
     const calcMove = new calc.Move(calcGen, move.name);
     
-    // Set up field conditions
-    const fieldOptions = {};
-
-    // Check for weather-setting or terrain-setting abilities
-    // Unfortunately since the calc auto-sets these via UI we need to hardcode them here
-    switch (attacker.ability) {
-      // Weather
-      case 'Drizzle':
-        fieldOptions.weather = 'Rain';
-        break;
-      case 'Drought':
-        fieldOptions.weather = 'Sun';
-        break;
-      case 'Sand Stream':
-        fieldOptions.weather = 'Sand';
-        break;
-      case 'Snow Warning':
-        if (gen >= 9) {
-          fieldOptions.weather = 'Snow';
-        } else {
-          fieldOptions.weather = 'Hail';
-        }
-        break;
-      case 'Primordial Sea':
-        fieldOptions.weather = 'Heavy Rain';
-        break;
-      case 'Desolate Land':
-        fieldOptions.weather = 'Harsh Sunshine';
-        break;
-      case 'Orichalcum Pulse':
-        fieldOptions.weather = 'Sun';
-        break;
-      
-      // Terrain
-      case 'Electric Surge':
-        fieldOptions.terrain = 'Electric';
-        break;
-      case 'Grassy Surge':
-        fieldOptions.terrain = 'Grassy';
-        break;
-      case 'Misty Surge':
-        fieldOptions.terrain = 'Misty';
-        break;
-      case 'Psychic Surge':
-        fieldOptions.terrain = 'Psychic';
-        break;
-      case 'Hadron Engine':
-        fieldOptions.terrain = 'Electric';
-        break;
-      
-      default:
-        break;
-    }
-
-    // Autoset status based on item
-    // Same as above, calc autosets these via UI so we need to hardcode them here
-    switch (attacker.item) {
-      case "Flame Orb":
-        attacker.status = "brn";
-        break;
-      case "Toxic Orb":
-        attacker.status = "tox";
-        break;
-    }
+    // Set up field and status
+    const fieldOptions = this.setupFieldAndStatus(attacker, gen);
     
     const field = new calc.Field(fieldOptions);
     
@@ -1363,6 +1317,26 @@ const subtool = {
       });
     }
 
+    // Special cases (which are handled in the defender's calc so we can't use the tracker)
+    if (attacker.hasAbility('Sword of Ruin')) {
+      components.push({
+        id: 'modifier',
+        value: 1 / 0.75, // Defender is 25% weaker
+        reasons: {
+          swordOfRuin: "Sword of Ruin",
+        },
+      });
+    }
+    if (attacker.hasAbility('Beads of Ruin')) {
+      components.push({
+        id: 'modifier',
+        value: 1 / 0.75, // Defender is 25% weaker
+        reasons: {
+          beadsOfRuin: "Beads of Ruin",
+        },
+      });
+    }
+
     // Finally, add the roll multiplier and denominator
     components.push({
       id: 'rollMultiplier',
@@ -1438,7 +1412,7 @@ const subtool = {
       if (!pokemon) return;
 
       // Calculate power using the actual base power
-      const powerData = this.calculateMovePower(
+      const powerData = this.calculatePowerValues(
         { clientPokemon: pokemon, serverPokemon: activePokemon },
         move,
         species,
@@ -1578,7 +1552,7 @@ const subtool = {
         const move = battle.dex.moves.get(moveText.substring(2));
         if (!move || move.category === "Status") return;
 
-        const powerData = this.calculateMovePower(
+        const powerData = this.calculatePowerValues(
           { clientPokemon, serverPokemon },
           move,
           species,

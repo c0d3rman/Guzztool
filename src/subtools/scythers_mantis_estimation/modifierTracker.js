@@ -1,18 +1,21 @@
 import { FunctionListenerProxy } from "@guzztool/util/ListenerProxy";
 import * as calc from '@smogon/calc';
 
-export class ModifierTracker {
+class ModifierTracker {
   constructor() {
     this.currentMods = [];
     this.lastCalculation = null;
+    this.lastDefense = null;
   }
   
   startTracking() {
     this.currentMods = [];
+    this.lastDefense = null;
   }
   
-  addModifier(mod, type, reasons) {
-    this.currentMods.push({ mod, type, reasons });
+  addModifier(modData) {
+    // Accept the format: { mod, type, reasons }
+    this.currentMods.push(modData);
   }
   
   finishTracking() {
@@ -26,28 +29,16 @@ export class ModifierTracker {
   }
 }
 
-// Create a local instance of the modifier tracker
-const modifierTracker = new ModifierTracker();
+// Create a global instance of the modifier tracker
+window.modifierTracker = new ModifierTracker();
 
 // Proxy the calculate function to track modifiers
 const calculateProxy = new FunctionListenerProxy(
   calc.calculate,
   (originalFn, ...args) => {
-    // Clear the global damageCalcModLog before calculation
-    window.damageCalcModLog = [];
-    modifierTracker.startTracking();
-    
-    // Run the original calculation
+    window.modifierTracker.startTracking();
     const result = originalFn(...args);
-    
-    // Transfer damageCalcModLog to our tracker
-    window.damageCalcModLog.forEach(entry => {
-      modifierTracker.addModifier(entry.mod, entry.type, entry.reasons);
-    });
-    
-    // Store the modifiers on the result object
-    result.allModifiers = modifierTracker.finishTracking();
-    
+    result.allModifiers = window.modifierTracker.finishTracking();
     return result;
   }
 );
