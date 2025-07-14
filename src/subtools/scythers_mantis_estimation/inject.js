@@ -83,7 +83,13 @@ const subtool = {
     const calcGen = calc.Generations.get(gen);
     
     // Create defender Pokemon with specified options
-    const defender = this.createCalcPokemon(calcGen, species, options);
+    let defender;
+    try {
+      defender = this.createCalcPokemon(calcGen, species, options);
+    } catch {
+      this.log.error('Failed to create defender Pokemon', species);
+      return;
+    }
     
     // Set up field and status
     const fieldOptions = this.setupFieldAndStatus(defender, gen);
@@ -313,7 +319,13 @@ const subtool = {
     try {
       return new calc.Pokemon(calcGen, species.id, options);
     } catch {
-      return new calc.Pokemon(calcGen, species.baseSpecies, options);
+      try {
+        return new calc.Pokemon(calcGen, species.baseSpecies, options);
+      } catch {
+        return new calc.Pokemon(calcGen, species.otherFormes[0], options); // Aegislash for some reason
+
+        // Can still fail for e.g. CAP, which will just error
+      }
     }
   },
 
