@@ -587,13 +587,13 @@ const subtool = {
               if (move2.category === "Status") return -sortOrder;
 
               const powerData1 = this.calculatePowerValues(
-                room.curSet,
+                { pokemonSet: room.curSet },
                 move1,
                 species,
                 room.curTeam.dex
               );
               const powerData2 = this.calculatePowerValues(
-                room.curSet,
+                { pokemonSet: room.curSet },
                 move2,
                 species,
                 room.curTeam.dex
@@ -651,15 +651,11 @@ const subtool = {
           let baseSet;
           if (this.options?.use_base_set_in_search) {
             const curSet = room.curSet ? { ...room.curSet } : {};
-            // Don't use the ability from the current set
-            if (curSet.ability) {
-              delete curSet.ability;
-            }
+            delete curSet.ability;
             baseSet = curSet;
           } else {
             baseSet = {};
           }
-          baseSet.species = species;
           const bulkData = this.calculateBulkValues(
             { pokemonSet: baseSet },
             species,
@@ -680,8 +676,8 @@ const subtool = {
           return results.sort(([rowType1, id1], [rowType2, id2]) => {
             if (rowType1 === "pokemon" && rowType2 === "pokemon") {
               if (!room.curSet) return 0;
-              const bulk1 = getBulk(id1, "Physical");
-              const bulk2 = getBulk(id2, "Physical");
+              const bulk1 = getBulk(id1, "physical");
+              const bulk2 = getBulk(id2, "physical");
               if (isNaN(bulk1) && isNaN(bulk2)) return 0;
               if (isNaN(bulk1)) return sortOrder;
               if (isNaN(bulk2)) return -sortOrder;
@@ -697,8 +693,8 @@ const subtool = {
           return results.sort(([rowType1, id1], [rowType2, id2]) => {
             if (rowType1 === "pokemon" && rowType2 === "pokemon") {
               if (!room.curSet) return 0;
-              const bulk1 = getBulk(id1, "Special");
-              const bulk2 = getBulk(id2, "Special");
+              const bulk1 = getBulk(id1, "special");
+              const bulk2 = getBulk(id2, "special");
               if (isNaN(bulk1) && isNaN(bulk2)) return 0;
               if (isNaN(bulk1)) return sortOrder;
               if (isNaN(bulk2)) return -sortOrder;
@@ -890,14 +886,15 @@ const subtool = {
         entry.getAttribute("data-entry")?.split("|")[1]
       );
 
-      // Use the current set for all fields except species if setting enabled, otherwise use default
+      // Use the current set for all fields except species and ability if setting enabled, otherwise use default
       let baseSet;
       if (this.options?.use_base_set_in_search) {
-        baseSet = room.curSet ? { ...room.curSet } : {};
+        const curSet = room.curSet ? { ...room.curSet } : {};
+        delete curSet.ability;
+        baseSet = curSet;
       } else {
         baseSet = {};
       }
-      baseSet.species = species;
       const bulkValues = this.calculateBulkValues(
         { pokemonSet: baseSet },
         species,
@@ -912,6 +909,7 @@ const subtool = {
       pBulkDisplay.textContent = bulkValues.physical.value;
       pBulkDisplay.style.color = this.options?.physical_color;
       pBulkDisplay.classList.add("pokemon-search-bulk");
+      pBulkDisplay.dataset.bulkType = "Physical";
 
       // Add tooltip handlers for physical bulk
       this.addTooltipToElement(pBulkDisplay, "physical-bulk", bulkValues.physical);
@@ -930,6 +928,7 @@ const subtool = {
       sBulkDisplay.textContent = bulkValues.special.value;
       sBulkDisplay.style.color = this.options?.special_color;
       sBulkDisplay.classList.add("pokemon-search-bulk");
+      sBulkDisplay.dataset.bulkType = "Special";
 
       // Add tooltip handlers for special bulk
       this.addTooltipToElement(sBulkDisplay, "special-bulk", bulkValues.special);
