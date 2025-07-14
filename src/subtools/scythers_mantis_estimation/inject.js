@@ -647,10 +647,15 @@ const subtool = {
             cache[speciesId] = NaN;
             return NaN;
           }
-          // Use the current set for all fields except species if setting enabled, otherwise use default
+          // Use the current set for all fields except species and ability if setting enabled, otherwise use default
           let baseSet;
           if (this.options?.use_base_set_in_search) {
-            baseSet = room.curSet ? { ...room.curSet } : {};
+            const curSet = room.curSet ? { ...room.curSet } : {};
+            // Don't use the ability from the current set
+            if (curSet.ability) {
+              delete curSet.ability;
+            }
+            baseSet = curSet;
           } else {
             baseSet = {};
           }
