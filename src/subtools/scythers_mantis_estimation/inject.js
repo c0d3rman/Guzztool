@@ -2,7 +2,7 @@ import { FunctionListenerProxy } from "@guzztool/util/ListenerProxy";
 import { calc } from './modifierTracker';
 
 
-const MIN_ROLL_SUFFIX = "m";
+const MAX_ROLL_SUFFIX = "M";
 const statNameMap = {
   'atk': 'Atk',
   'def': 'Def',
@@ -55,7 +55,7 @@ const subtool = {
   },
 
   getRollMultiplier: function () {
-    return this.options?.min_roll ? 0.714 : 0.84;
+    return this.options?.max_roll ? 0.84 : 0.714;
   },
 
   getGeneration: function () {
@@ -427,8 +427,8 @@ const subtool = {
     const powerValue = 4.0;
     const percent = Math.round((powerValue / bulkValue) * 100);
     const color = type === "Physical" ? this.options?.physical_color : this.options?.special_color;
-    const rollType = this.options?.min_roll ? "min roll" : "max roll";
-    const powerSuffix = this.options?.min_roll ? MIN_ROLL_SUFFIX : "";
+    const rollType = this.options?.max_roll ? "max roll" : "min roll";
+    const powerSuffix = this.options?.max_roll ? MAX_ROLL_SUFFIX : "";
     const exampleText = `e.g. <span style="color: ${color}">${powerValue.toFixed(1)}${powerSuffix}</span> power vs. <span style="color: ${color}">${bulkData.value}</span> bulk → ${percent}% ${rollType}`;
     
     // Create a calculation string with all modifiers
@@ -458,9 +458,9 @@ const subtool = {
       });
     }
 
-    const suffix = this.options?.min_roll ? MIN_ROLL_SUFFIX : "";
-    const minRollExplanation = this.options?.min_roll
-      ? `<p class="mantis-tooltip-explanation">"${MIN_ROLL_SUFFIX}" means this power represents the min roll.</p>`
+    const suffix = this.options?.max_roll ? MAX_ROLL_SUFFIX : "";
+    const minRollExplanation = this.options?.max_roll
+      ? `<p class="mantis-tooltip-explanation">"${MAX_ROLL_SUFFIX}" means this power represents the max roll.</p>`
       : "";
     
     // Create a calculation string with all modifiers
@@ -1143,9 +1143,9 @@ const subtool = {
     const display = document.createElement("span");
     display.className = "mantis-power-display";
 
-    // Add suffix for min-roll values, but not for "?"
+    // Add suffix for max-roll values, but not for "?"
     const suffix =
-      this.options?.min_roll && powerData.value !== "?" ? MIN_ROLL_SUFFIX : "";
+      this.options?.max_roll && powerData.value !== "?" ? MAX_ROLL_SUFFIX : "";
     display.textContent = powerData.value + suffix;
     display.style.color =
       powerData.category === "Physical" ? this.options?.physical_color : this.options?.special_color;

@@ -42,9 +42,9 @@
             "default": true
         },
         {
-            "id": "min_roll",
+            "id": "max_roll",
             "type": "boolean",
-            "title": "Use min-roll power (shows as 3.3m), instead of the default max-roll (shows as 3.3).",
+            "title": "Use max-roll power (shows as 3.3M), instead of the default min-roll (shows as 3.3).",
             "default": false
         },
         {
