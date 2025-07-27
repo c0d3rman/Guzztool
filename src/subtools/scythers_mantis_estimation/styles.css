@@ -115,6 +115,10 @@
 .utilichart .movedesccol {
   width: 276px;
 }
+.mantis-estpowercol em {
+  /* Move the MPow text a bit to the right to avoid it touching the Power text */
+  margin-left: 3px;
+}
 
 /* Container positioning */
 .mantis-container {

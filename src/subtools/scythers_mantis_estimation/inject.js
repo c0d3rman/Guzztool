@@ -846,7 +846,9 @@ const subtool = {
               : "special-power";
           this.addTooltipToElement(powerDisplay, type, powerData);
 
-          estCol.appendChild(document.createElement("em"));
+          const emElement = document.createElement("em");
+          emElement.textContent = "MPow";
+          estCol.appendChild(emElement);
           estCol.appendChild(document.createElement("br"));
           estCol.appendChild(powerDisplay);
         }
