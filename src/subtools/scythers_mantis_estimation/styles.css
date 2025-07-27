@@ -112,6 +112,10 @@
   opacity: 0.8;
 }
 
+.utilichart .movedesccol {
+  width: 276px;
+}
+
 /* Container positioning */
 .mantis-container {
   position: relative;
