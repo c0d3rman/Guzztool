@@ -284,6 +284,17 @@ const exportForTarget = BUILD_TARGET => {
             firefox: '/usr/bin/true', // this plugin launches Firefox when running in :watch mode (which we don't want), so we tell it "Firefox" is this noop binary
             noInput: false, // true by default in watch mode, so we set it to false (though we don't really use it)
         }));
+
+        // Firefox requires a source zip file, so we make one without any untracked files
+        if (!__DEV__) {
+            plugins.push(new RunCommandPlugin({
+                stage: 'done',
+                run: [{
+                    cmd: `git archive --format=zip -o ${path.join(path.dirname(output.path), `${BUILD_TARGET}_source.zip`)} HEAD`,
+                    opts: { cwd: __dirname },
+                }],
+            }));
+        }
     }
 
     // source maps for easier debugging of minified bundles
